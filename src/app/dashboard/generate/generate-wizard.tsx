@@ -1,0 +1,496 @@
+"use client";
+
+// ============================================================
+// 상세페이지 생성 마법사 (4단계 위저드)
+// 1. 상품 선택 → 2. 스타일 선택 → 3. 언어 선택 → 4. 생성
+// ============================================================
+
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Package,
+  Palette,
+  Globe,
+  Wand2,
+  Check,
+  Loader2,
+  AlertCircle,
+  Sparkles,
+  ChevronRight,
+  ChevronLeft,
+} from "lucide-react";
+import type { Language } from "@/lib/types";
+import { POINT_COSTS } from "@/lib/types";
+
+// 최소 필요 데이터 shape
+interface ProductLite {
+  id: string;
+  name: string;
+  category: string | null;
+}
+
+interface TemplateLite {
+  id: string;
+  code: string;
+  name: string;
+  category: string;
+  description: string | null;
+  thumbnail_url: string | null;
+  design_tokens: any;
+}
+
+interface Props {
+  products: ProductLite[];
+  templates: TemplateLite[];
+  points: number;
+}
+
+const LANGUAGES: Array<{ code: Language; label: string; flag: string; extraCost: number }> = [
+  { code: "ko", label: "한국어", flag: "🇰🇷", extraCost: 0 },
+  { code: "en", label: "English", flag: "🇺🇸", extraCost: POINT_COSTS.ADD_LANGUAGE },
+  { code: "zh", label: "中文", flag: "🇨🇳", extraCost: POINT_COSTS.ADD_LANGUAGE },
+  { code: "ja", label: "日本語", flag: "🇯🇵", extraCost: POINT_COSTS.ADD_LANGUAGE },
+];
+
+export default function GenerateWizard({ products, templates, points }: Props) {
+  const router = useRouter();
+  const [step, setStep] = useState(1);
+  const [productId, setProductId] = useState<string | null>(null);
+  const [templateId, setTemplateId] = useState<string | null>(null);
+  const [language, setLanguage] = useState<Language>("ko");
+  const [useProModel, setUseProModel] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<string | null>(null);
+
+  const selectedProduct = products.find((p) => p.id === productId);
+  const selectedTemplate = templates.find((t) => t.id === templateId);
+  const selectedLang = LANGUAGES.find((l) => l.code === language)!;
+
+  const totalCost = POINT_COSTS.CREATE_PAGE + selectedLang.extraCost;
+  const canAfford = points >= totalCost;
+
+  function next() {
+    setError(null);
+    if (step < 4) setStep(step + 1);
+  }
+
+  function prev() {
+    setError(null);
+    if (step > 1) setStep(step - 1);
+  }
+
+  async function handleGenerate() {
+    if (!productId || !templateId) {
+      setError("상품과 스타일을 모두 선택해주세요.");
+      return;
+    }
+
+    if (!canAfford) {
+      setError(`포인트가 부족합니다. (필요: ${totalCost}P / 보유: ${points}P)`);
+      return;
+    }
+
+    setError(null);
+    setProgress("AI 카피 생성 중... (약 10초)");
+
+    startTransition(async () => {
+      try {
+        // 프로그레스 시뮬레이션
+        const progressTimer = setTimeout(() => {
+          setProgress("이미지 6장 생성 중... (약 30~60초)");
+        }, 8000);
+
+        const res = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            product_id: productId,
+            template_id: templateId,
+            language,
+            use_pro_model: useProModel,
+          }),
+        });
+
+        clearTimeout(progressTimer);
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          setError(data.error ?? "생성에 실패했습니다.");
+          setProgress(null);
+          return;
+        }
+
+        setProgress("완료! 결과 페이지로 이동합니다...");
+        // 결과 페이지로 이동
+        router.push(`/dashboard/pages/${data.page_id}`);
+      } catch (err: any) {
+        setError(err?.message ?? "네트워크 오류가 발생했습니다.");
+        setProgress(null);
+      }
+    });
+  }
+
+  return (
+    <div className="rounded-xl border border-brand/10 bg-white p-8">
+      {/* Step Indicator */}
+      <div className="mb-8 flex items-center justify-between">
+        <StepIndicator step={1} label="상품 선택" active={step >= 1} done={step > 1} />
+        <StepDivider done={step > 1} />
+        <StepIndicator step={2} label="스타일 선택" active={step >= 2} done={step > 2} />
+        <StepDivider done={step > 2} />
+        <StepIndicator step={3} label="언어 선택" active={step >= 3} done={step > 3} />
+        <StepDivider done={step > 3} />
+        <StepIndicator step={4} label="생성" active={step >= 4} />
+      </div>
+
+      {/* Step Content */}
+      <div className="min-h-[400px]">
+        {/* STEP 1: 상품 선택 */}
+        {step === 1 && (
+          <div>
+            <h2 className="mb-4 flex items-center gap-2 font-serif text-xl font-bold text-ink">
+              <Package className="h-5 w-5 text-brand" />
+              어떤 상품의 상세페이지를 만드시겠어요?
+            </h2>
+            <div className="grid gap-3 md:grid-cols-2">
+              {products.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setProductId(p.id)}
+                  className={
+                    productId === p.id
+                      ? "flex items-center justify-between rounded-lg border-2 border-brand bg-brand/5 p-4 text-left"
+                      : "flex items-center justify-between rounded-lg border-2 border-brand/10 bg-white p-4 text-left hover:border-brand/30"
+                  }
+                >
+                  <div>
+                    <p className="font-medium text-ink">{p.name}</p>
+                    {p.category && (
+                      <p className="text-xs text-muted-foreground">{p.category}</p>
+                    )}
+                  </div>
+                  {productId === p.id && <Check className="h-5 w-5 text-brand" />}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* STEP 2: 스타일 선택 */}
+        {step === 2 && (
+          <div>
+            <h2 className="mb-4 flex items-center gap-2 font-serif text-xl font-bold text-ink">
+              <Palette className="h-5 w-5 text-brand" />
+              어떤 스타일로 만드시겠어요?
+            </h2>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {templates.map((t) => {
+                const isSelected = templateId === t.id;
+                const primaryColor = t.design_tokens?.colors?.primary ?? "#a71d1d";
+                const bgColor = t.design_tokens?.colors?.background ?? "#f4ede0";
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setTemplateId(t.id)}
+                    className={
+                      isSelected
+                        ? "group flex flex-col overflow-hidden rounded-lg border-2 border-brand text-left"
+                        : "group flex flex-col overflow-hidden rounded-lg border-2 border-brand/10 text-left hover:border-brand/30"
+                    }
+                  >
+                    {/* 컬러 프리뷰 */}
+                    <div
+                      className="flex h-24 items-center justify-center"
+                      style={{ backgroundColor: bgColor }}
+                    >
+                      <div
+                        className="rounded px-3 py-1 text-xs font-bold text-white"
+                        style={{ backgroundColor: primaryColor }}
+                      >
+                        {t.category}
+                      </div>
+                    </div>
+                    <div className="flex flex-1 items-start justify-between gap-2 p-3">
+                      <div>
+                        <p className="text-sm font-bold text-ink">{t.name}</p>
+                        {t.description && (
+                          <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                            {t.description}
+                          </p>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand" />
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* STEP 3: 언어 선택 */}
+        {step === 3 && (
+          <div>
+            <h2 className="mb-4 flex items-center gap-2 font-serif text-xl font-bold text-ink">
+              <Globe className="h-5 w-5 text-brand" />
+              어떤 언어로 생성하시겠어요?
+            </h2>
+            <div className="grid gap-3 md:grid-cols-2">
+              {LANGUAGES.map((l) => (
+                <button
+                  key={l.code}
+                  type="button"
+                  onClick={() => setLanguage(l.code)}
+                  className={
+                    language === l.code
+                      ? "flex items-center justify-between rounded-lg border-2 border-brand bg-brand/5 p-4 text-left"
+                      : "flex items-center justify-between rounded-lg border-2 border-brand/10 bg-white p-4 text-left hover:border-brand/30"
+                  }
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{l.flag}</span>
+                    <div>
+                      <p className="font-medium text-ink">{l.label}</p>
+                      {l.extraCost > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          +{l.extraCost}P 추가
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {language === l.code && <Check className="h-5 w-5 text-brand" />}
+                </button>
+              ))}
+            </div>
+
+            {/* 이미지 품질 선택 */}
+            <div className="mt-6 rounded-lg bg-ivory p-4">
+              <div className="mb-2 flex items-center gap-2 text-sm font-medium text-ink">
+                <Sparkles className="h-4 w-4 text-brand" />
+                이미지 품질
+              </div>
+              <label className="flex cursor-pointer items-start gap-2 rounded p-2 hover:bg-white">
+                <input
+                  type="radio"
+                  name="model"
+                  checked={!useProModel}
+                  onChange={() => setUseProModel(false)}
+                  className="mt-0.5 accent-brand"
+                />
+                <div>
+                  <p className="text-sm font-medium">표준 (Nano Banana)</p>
+                  <p className="text-xs text-muted-foreground">
+                    빠른 생성, 무료 · 대부분의 상품에 충분
+                  </p>
+                </div>
+              </label>
+              <label className="mt-1 flex cursor-pointer items-start gap-2 rounded p-2 hover:bg-white">
+                <input
+                  type="radio"
+                  name="model"
+                  checked={useProModel}
+                  onChange={() => setUseProModel(true)}
+                  className="mt-0.5 accent-brand"
+                />
+                <div>
+                  <p className="text-sm font-medium">
+                    프로 (Nano Banana Pro){" "}
+                    <span className="rounded bg-brand/10 px-1 py-0.5 text-xs font-bold text-brand">
+                      권장
+                    </span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    고품질, 텍스트 렌더링 우수 · 프리미엄 상품에 적합
+                  </p>
+                </div>
+              </label>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 4: 생성 확인 */}
+        {step === 4 && (
+          <div>
+            <h2 className="mb-4 flex items-center gap-2 font-serif text-xl font-bold text-ink">
+              <Wand2 className="h-5 w-5 text-brand" />
+              생성 준비 완료
+            </h2>
+
+            <div className="mb-6 space-y-3 rounded-lg bg-ivory p-5">
+              <SummaryRow label="상품" value={selectedProduct?.name ?? "-"} />
+              <SummaryRow label="스타일" value={selectedTemplate?.name ?? "-"} />
+              <SummaryRow
+                label="언어"
+                value={`${selectedLang.flag} ${selectedLang.label}`}
+              />
+              <SummaryRow
+                label="이미지 품질"
+                value={useProModel ? "프로 (Nano Banana Pro)" : "표준 (Nano Banana)"}
+              />
+              <div className="mt-3 border-t border-brand/10 pt-3">
+                <SummaryRow
+                  label="차감 포인트"
+                  value={`${totalCost} P`}
+                  emphasize
+                />
+                <SummaryRow
+                  label="생성 후 잔여"
+                  value={`${points - totalCost} P`}
+                />
+              </div>
+            </div>
+
+            {!canAfford && (
+              <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <div>
+                  포인트가 부족합니다. 마이페이지에서 충전 후 다시 시도해주세요.
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <div>{error}</div>
+              </div>
+            )}
+
+            {progress && (
+              <div className="mb-4 flex items-center gap-3 rounded-lg border border-brand/20 bg-brand/5 p-4 text-sm text-brand">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <div>
+                  <p className="font-medium">{progress}</p>
+                  <p className="mt-0.5 text-xs text-brand/70">
+                    창을 닫지 마세요. 최대 2분까지 소요될 수 있습니다.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Navigation */}
+      <div className="mt-8 flex items-center justify-between border-t border-brand/10 pt-6">
+        <button
+          type="button"
+          onClick={prev}
+          disabled={step === 1 || isPending}
+          className="inline-flex items-center gap-1 rounded-lg px-4 py-2 text-sm text-ink disabled:opacity-30 hover:bg-ivory"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          이전
+        </button>
+
+        {step < 4 ? (
+          <button
+            type="button"
+            onClick={next}
+            disabled={
+              (step === 1 && !productId) ||
+              (step === 2 && !templateId)
+            }
+            className="inline-flex items-center gap-1 rounded-lg bg-brand px-6 py-2 font-medium text-white hover:bg-brand-dark disabled:opacity-40"
+          >
+            다음
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleGenerate}
+            disabled={isPending || !canAfford}
+            className="inline-flex items-center gap-2 rounded-lg bg-brand px-8 py-3 font-bold text-white hover:bg-brand-dark disabled:opacity-40"
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                생성 중...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" />
+                {totalCost}P로 생성하기
+              </>
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StepIndicator({
+  step,
+  label,
+  active,
+  done,
+}: {
+  step: number;
+  label: string;
+  active?: boolean;
+  done?: boolean;
+}) {
+  return (
+    <div className="flex flex-col items-center">
+      <div
+        className={
+          done
+            ? "flex h-10 w-10 items-center justify-center rounded-full bg-brand text-sm font-bold text-white"
+            : active
+              ? "flex h-10 w-10 items-center justify-center rounded-full bg-brand text-sm font-bold text-white"
+              : "flex h-10 w-10 items-center justify-center rounded-full border-2 border-brand/20 bg-white text-sm font-bold text-brand/50"
+        }
+      >
+        {done ? <Check className="h-5 w-5" /> : step}
+      </div>
+      <p
+        className={
+          active || done
+            ? "mt-2 text-xs font-medium text-brand"
+            : "mt-2 text-xs text-muted-foreground"
+        }
+      >
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function StepDivider({ done }: { done?: boolean }) {
+  return (
+    <div className={done ? "mx-2 h-0.5 flex-1 bg-brand" : "mx-2 h-0.5 flex-1 bg-brand/10"} />
+  );
+}
+
+function SummaryRow({
+  label,
+  value,
+  emphasize,
+}: {
+  label: string;
+  value: string;
+  emphasize?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span
+        className={
+          emphasize
+            ? "font-serif text-lg font-bold text-brand"
+            : "font-medium text-ink"
+        }
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
