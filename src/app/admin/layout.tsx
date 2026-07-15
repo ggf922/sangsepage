@@ -12,6 +12,8 @@ import {
   Wallet,
 } from "lucide-react";
 import { createAdminClient } from "@/lib/supabase/server";
+import { getI18n } from "@/lib/i18n/server";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 export default async function AdminLayout({
   children,
@@ -42,6 +44,8 @@ export default async function AdminLayout({
     .select("id", { count: "exact", head: true })
     .eq("status", "pending");
 
+  const { locale, t } = await getI18n();
+
   return (
     <div className="flex min-h-screen bg-slate-50">
       <aside className="fixed left-0 top-0 z-30 flex h-screen w-64 flex-col border-r border-slate-200 bg-slate-900 text-white">
@@ -57,39 +61,43 @@ export default async function AdminLayout({
 
         <nav className="flex-1 space-y-1 p-4">
           <AdminNavLink href="/admin" icon={<LayoutDashboard />}>
-            대시보드
+            {t.nav.dashboard}
           </AdminNavLink>
           <AdminNavLink href="/admin/templates" icon={<Palette />}>
-            템플릿 관리
+            {t.admin.templates}
           </AdminNavLink>
           <AdminNavLink href="/admin/users" icon={<Users />}>
-            회원 관리
+            {t.admin.users}
           </AdminNavLink>
           <AdminNavLink href="/admin/pages" icon={<FileText />}>
-            생성 페이지 모니터링
+            {t.admin.pages}
           </AdminNavLink>
           <AdminNavLink
             href="/admin/charges"
             icon={<Wallet />}
             badge={pendingChargeCount ?? 0}
           >
-            충전 승인
+            {t.admin.charges}
           </AdminNavLink>
           <AdminNavLink href="/admin/points" icon={<Coins />}>
-            포인트 상품 관리
+            {t.admin.points}
           </AdminNavLink>
           <AdminNavLink href="/admin/analytics" icon={<BarChart3 />}>
-            통계
+            {t.admin.analytics}
           </AdminNavLink>
         </nav>
 
-        <div className="border-t border-slate-800 p-4">
+        <div className="space-y-2 border-t border-slate-800 p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-400">{t.common.language}</span>
+            <LanguageSwitcher currentLocale={locale} variant="compact" showLabel={false} />
+          </div>
           <Link
             href="/dashboard"
             className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
-            사용자 모드로
+            {t.common.back}
           </Link>
         </div>
       </aside>

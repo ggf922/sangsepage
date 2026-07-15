@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { ArrowRight, Sparkles, Globe, Palette, Zap, Shield, Download } from "lucide-react";
+import { getI18n } from "@/lib/i18n/server";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const { locale, t } = await getI18n();
   return (
     <main className="min-h-screen bg-gradient-to-b from-ivory-light via-ivory to-ivory-dark">
       {/* Header */}
@@ -25,17 +28,18 @@ export default function HomePage() {
             </Link>
           </nav>
           <div className="flex items-center gap-2">
+            <LanguageSwitcher currentLocale={locale} variant="ghost" showLabel={false} />
             <Link
               href="/auth/login"
               className="text-sm font-medium text-ink hover:text-brand"
             >
-              로그인
+              {t.common.login}
             </Link>
             <Link
               href="/auth/signup"
               className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
             >
-              무료 시작
+              {t.common.signup}
             </Link>
           </div>
         </div>

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Noto_Sans_KR, Nanum_Myeongjo } from "next/font/google";
 import "./globals.css";
+import { getLocale } from "@/lib/i18n/server";
+import { DICTIONARIES } from "@/lib/i18n/dictionaries";
+import { I18nProvider } from "@/lib/i18n/context";
 
 const notoSansKR = Noto_Sans_KR({
   subsets: ["latin"],
@@ -38,17 +41,30 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+// html lang 매핑
+const HTML_LANG_MAP = {
+  ko: "ko",
+  en: "en",
+  zh: "zh-CN",
+  ja: "ja",
+} as const;
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const dictionary = DICTIONARIES[locale];
+
   return (
-    <html lang="ko" suppressHydrationWarning>
+    <html lang={HTML_LANG_MAP[locale]} suppressHydrationWarning>
       <body
         className={`${notoSansKR.variable} ${nanumMyeongjo.variable} font-sans antialiased`}
       >
-        {children}
+        <I18nProvider locale={locale} dictionary={dictionary}>
+          {children}
+        </I18nProvider>
       </body>
     </html>
   );

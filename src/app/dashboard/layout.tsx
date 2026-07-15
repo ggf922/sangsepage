@@ -12,6 +12,8 @@ import {
   Shield,
 } from "lucide-react";
 import { LogoutButton } from "@/components/logout-button";
+import { getI18n } from "@/lib/i18n/server";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 export default async function DashboardLayout({
   children,
@@ -38,6 +40,8 @@ export default async function DashboardLayout({
   const points = profile?.points ?? 0;
   const displayName = profile?.name || user.email?.split("@")[0] || "회원";
 
+  const { locale, t } = await getI18n();
+
   return (
     <div className="flex min-h-screen bg-ivory-light">
       {/* Sidebar */}
@@ -53,33 +57,33 @@ export default async function DashboardLayout({
 
         <nav className="flex-1 space-y-1 p-4">
           <NavLink href="/dashboard" icon={<LayoutDashboard />}>
-            대시보드
+            {t.nav.dashboard}
           </NavLink>
           <NavLink href="/dashboard/products" icon={<Package />}>
-            상품 관리
+            {t.nav.products}
           </NavLink>
           <NavLink href="/dashboard/pages" icon={<FileText />}>
-            생성된 페이지
+            {t.nav.pages}
           </NavLink>
           <NavLink
             href="/dashboard/generate"
             icon={<Wand2 />}
             highlight
           >
-            + 새로 만들기
+            + {t.nav.generate}
           </NavLink>
           <NavLink href="/dashboard/mypage" icon={<User />}>
-            마이페이지
+            {t.nav.mypage}
           </NavLink>
 
           {isAdmin && (
             <>
               <div className="mt-6 border-t border-brand/10 pt-4">
                 <p className="mb-2 px-3 text-xs font-bold uppercase tracking-wider text-brand">
-                  관리자
+                  {t.common.admin}
                 </p>
                 <NavLink href="/admin" icon={<Shield />}>
-                  관리자 페이지
+                  {t.nav.admin}
                 </NavLink>
               </div>
             </>
@@ -87,22 +91,26 @@ export default async function DashboardLayout({
         </nav>
 
         <div className="border-t border-brand/10 p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">{t.common.language}</span>
+            <LanguageSwitcher currentLocale={locale} variant="compact" showLabel={false} />
+          </div>
           <div className="mb-3 rounded-lg bg-ivory p-3">
             <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
               <Coins className="h-3.5 w-3.5" />
-              <span>잔여 포인트</span>
+              <span>{t.points.balance}</span>
             </div>
             <div className="flex items-baseline justify-between">
               <span className="font-serif text-2xl font-bold text-brand">
                 {points.toLocaleString()}
               </span>
-              <span className="text-xs text-muted-foreground">P</span>
+              <span className="text-xs text-muted-foreground">{t.points.unit}</span>
             </div>
             <Link
               href="/dashboard/mypage/charge"
               className="mt-2 block rounded-md bg-brand py-1.5 text-center text-xs font-medium text-white hover:bg-brand-dark"
             >
-              충전하기
+              {t.charge.title}
             </Link>
           </div>
 
