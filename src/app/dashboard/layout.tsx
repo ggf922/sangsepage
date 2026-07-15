@@ -49,7 +49,11 @@ export default async function DashboardLayout({
       <aside className="fixed left-0 top-0 z-30 flex h-screen w-64 flex-col border-r border-brand/10 bg-white">
         <div className="border-b border-brand/10 p-6">
           <Link href="/" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-brand" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand">
+              <span className="font-serif text-[13px] font-extrabold tracking-tighter text-white">
+                88
+              </span>
+            </div>
             <span className="font-serif text-lg font-bold text-brand">
               88km
             </span>

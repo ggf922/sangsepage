@@ -22,8 +22,11 @@ export default async function HomePage() {
       <header className="sticky top-0 z-50 w-full border-b border-black/[0.06] bg-ivory-light/85 backdrop-blur-xl">
         <div className="container mx-auto flex h-[72px] items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="relative h-8 w-8 overflow-hidden rounded-lg bg-brand shadow-sm shadow-brand/20">
+            <div className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-brand shadow-sm shadow-brand/20">
               <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent" />
+              <span className="relative z-10 font-serif text-[13px] font-extrabold tracking-tighter text-white">
+                88
+              </span>
             </div>
             <span className="font-serif text-[19px] font-bold tracking-tight text-brand">
               88km
@@ -361,7 +364,11 @@ export default async function HomePage() {
         <div className="container mx-auto px-6 py-12">
           <div className="flex flex-col items-center gap-6 md:flex-row md:justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="h-6 w-6 rounded bg-brand" />
+              <div className="flex h-6 w-6 items-center justify-center rounded bg-brand">
+                <span className="font-serif text-[10px] font-extrabold tracking-tighter text-white">
+                  88
+                </span>
+              </div>
               <span className="font-serif text-[15px] font-bold tracking-tight text-brand">
                 88km
               </span>

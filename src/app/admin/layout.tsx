@@ -54,7 +54,11 @@ export default async function AdminLayout({
             🛡️ 관리자
           </div>
           <Link href="/" className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded bg-brand" />
+            <div className="flex h-6 w-6 items-center justify-center rounded bg-brand">
+              <span className="font-serif text-[10px] font-extrabold tracking-tighter text-white">
+                88
+              </span>
+            </div>
             <span className="font-serif font-bold">88km Admin</span>
           </Link>
         </div>

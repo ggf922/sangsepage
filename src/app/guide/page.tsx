@@ -32,8 +32,11 @@ export default function GuidePage() {
       <header className="sticky top-0 z-50 w-full border-b border-black/[0.06] bg-ivory-light/85 backdrop-blur-xl">
         <div className="container mx-auto flex h-[72px] items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="relative h-8 w-8 overflow-hidden rounded-lg bg-brand shadow-sm shadow-brand/20">
+            <div className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-brand shadow-sm shadow-brand/20">
               <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent" />
+              <span className="relative z-10 font-serif text-[13px] font-extrabold tracking-tighter text-white">
+                88
+              </span>
             </div>
             <span className="font-serif text-[19px] font-bold tracking-tight text-brand">
               88km

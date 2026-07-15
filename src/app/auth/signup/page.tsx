@@ -82,7 +82,11 @@ export default function SignupPage() {
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-ivory-light to-ivory-dark px-4 py-8">
       <div className="w-full max-w-md">
         <Link href="/" className="mb-8 flex items-center justify-center gap-2">
-          <div className="h-10 w-10 rounded-lg bg-brand" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand">
+            <span className="font-serif text-[16px] font-extrabold tracking-tighter text-white">
+              88
+            </span>
+          </div>
           <span className="font-serif text-2xl font-bold text-brand">
             88km
           </span>
