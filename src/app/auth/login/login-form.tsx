@@ -9,10 +9,22 @@ export default function LoginForm() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/dashboard";
 
+  // URL의 에러 파라미터 처리 (auth callback 실패, 이메일 링크 만료 등)
+  const urlError = searchParams.get("error");
+  const urlMessage = searchParams.get("message");
+  const initialError =
+    urlError === "expired"
+      ? "이메일 인증 링크가 만료되었습니다. 다시 회원가입을 시도해주세요."
+      : urlError === "auth"
+        ? urlMessage
+          ? `인증 실패: ${urlMessage}`
+          : "이메일 인증에 실패했습니다. 링크가 만료되었거나 이미 사용되었을 수 있습니다."
+        : null;
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
