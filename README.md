@@ -11,9 +11,10 @@ AI로 5초만에 프로급 상품 상세페이지를 자동 생성하는 웹 서
 
 ## 🌐 URL
 
+- **프로덕션**: https://88km.shop (커스텀 도메인)
+- **Vercel 기본**: https://sangsepage-mu.vercel.app
 - **로컬 개발**: http://localhost:3000
 - **GitHub 저장소**: https://github.com/ggf922/sangsepage
-- **프로덕션 배포**: (Vercel 예정)
 
 ## ✅ 완료된 기능
 
@@ -96,12 +97,14 @@ AI로 5초만에 프로급 상품 상세페이지를 자동 생성하는 웹 서
 
 ## 🚧 진행 예정
 
-- [ ] Vercel 프로덕션 배포 및 환경변수 설정
-- [ ] 커스텀 도메인 연결
+- [x] Vercel 프로덕션 배포 및 환경변수 설정
+- [x] 커스텀 도메인 연결 (88km.shop)
 - [ ] Toss Payments 결제 자동화 (현재는 무통장입금)
 - [ ] 각 사용자 개별 페이지의 전체 번역 확장 (현재는 레이아웃/네비/공용 UI만)
 - [ ] 이메일 알림 (승인 완료, 반려)
 - [ ] 페이지 공유 URL (비회원 접근용)
+- [ ] OG 이미지 및 favicon 커스터마이징
+- [ ] SEO sitemap.xml / robots.txt
 
 ## 🔗 주요 URI
 
@@ -205,16 +208,21 @@ AI로 5초만에 프로급 상품 상세페이지를 자동 생성하는 웹 서
 
 ## 🛠️ 배포 정보
 
-- **플랫폼**: Vercel (예정) / 현재는 Novita Sandbox
+- **플랫폼**: Vercel Pro (프로덕션) / Novita Sandbox (개발)
+- **도메인**: `88km.shop` (가비아 → Vercel 연결)
+- **DNS 설정**: A `@` → `216.150.1.1` / CNAME `www` → `cname.vercel-dns.com.`
+- **SSL**: Let's Encrypt 자동 발급 (Vercel)
 - **런타임**: Next.js 15.5.20 App Router (Server Actions + Server Components)
-- **상태**: 🟡 개발 완료, 프로덕션 배포 대기 중
+- **리전**: `icn1` (서울, 아시아 사용자 최적화)
+- **함수 제한**: AI 라우트 `maxDuration: 300s` (Vercel Pro)
+- **상태**: 🟢 프로덕션 서비스 중
 - **기술 스택**:
   - Next.js 15.5.20 + React 19
   - TailwindCSS + shadcn/ui + Radix UI
-  - Supabase (Auth + Postgres + Storage + RLS)
+  - Supabase Pro (Auth + Postgres + Storage + RLS)
   - OpenAI GPT-4o mini (카피 생성)
-  - Google Gemini Nano Banana / Pro (이미지 생성)
-  - PM2 (프로세스 관리)
+  - Google Gemini Nano Banana / Pro (이미지 생성, 유료 API)
+  - PM2 (개발 환경 프로세스 관리)
 - **최근 업데이트**: 2026-07-15
 
 ## 🚀 로컬 실행

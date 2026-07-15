@@ -33,7 +33,7 @@ export function getSiteUrl(): string {
 
 /**
  * 사이트 URL 기반으로 절대 경로를 만듭니다.
- * @example getAbsoluteUrl("/auth/callback") → "https://modoomodoo.shop/auth/callback"
+ * @example getAbsoluteUrl("/auth/callback") → "https://88km.shop/auth/callback"
  */
 export function getAbsoluteUrl(path: string): string {
   const base = getSiteUrl();
