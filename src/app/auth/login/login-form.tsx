@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { translateAuthError } from "@/lib/supabase/error-messages";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -38,11 +39,7 @@ export default function LoginForm() {
     });
 
     if (error) {
-      setError(
-        error.message === "Invalid login credentials"
-          ? "이메일 또는 비밀번호가 올바르지 않습니다."
-          : error.message
-      );
+      setError(translateAuthError(error.message));
       setLoading(false);
       return;
     }

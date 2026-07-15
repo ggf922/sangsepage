@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { translateAuthError } from "@/lib/supabase/error-messages";
 import { getAbsoluteUrl } from "@/lib/site-url";
 import { Sparkles, CheckCircle } from "lucide-react";
 
@@ -38,7 +39,7 @@ export default function SignupPage() {
     });
 
     if (error) {
-      setError(error.message);
+      setError(translateAuthError(error.message));
       setLoading(false);
       return;
     }
@@ -57,7 +58,7 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-ivory-light to-ivory-dark px-4">
+      <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-ivory-light to-ivory-dark px-4 py-8">
         <div className="w-full max-w-md rounded-2xl border border-brand/10 bg-white p-8 text-center shadow-xl">
           <CheckCircle className="mx-auto mb-4 h-16 w-16 text-green-500" />
           <h1 className="mb-4 font-serif text-2xl font-bold text-ink">
@@ -67,6 +68,14 @@ export default function SignupPage() {
             <strong className="text-brand">{email}</strong>로<br />
             인증 링크를 보냈습니다. 클릭하시면 가입이 완료됩니다.
           </p>
+          <div className="mb-6 rounded-lg bg-amber-50 p-3 text-left text-xs text-amber-900">
+            <p className="mb-1 font-semibold">💡 메일이 안 왔나요?</p>
+            <ul className="list-disc space-y-1 pl-4 text-amber-800">
+              <li>스팸함(정크메일함)을 확인해 주세요</li>
+              <li>1~2분 정도 소요될 수 있어요</li>
+              <li>Naver/Daum 사용자는 스팸함 확인 필수</li>
+            </ul>
+          </div>
           <Link
             href="/auth/login"
             className="inline-block rounded-lg bg-brand px-6 py-2.5 font-medium text-white hover:bg-brand-dark"
