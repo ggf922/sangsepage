@@ -4,6 +4,7 @@ import "./globals.css";
 import { getLocale } from "@/lib/i18n/server";
 import { DICTIONARIES } from "@/lib/i18n/dictionaries";
 import { I18nProvider } from "@/lib/i18n/context";
+import { getSiteUrl } from "@/lib/site-url";
 
 const notoSansKR = Noto_Sans_KR({
   subsets: ["latin"],
@@ -20,6 +21,7 @@ const nanumMyeongjo = Nanum_Myeongjo({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getSiteUrl()),
   title: "상세페이지 자동 생성 | SangSePage",
   description:
     "AI로 5초만에 프로급 상품 상세페이지를 자동 생성하세요. 김치·생활용품·전자제품·건강식품·화장품 5가지 전문 스타일 지원, 한국어/영어/중국어/일본어 4개 언어 대응.",
@@ -38,6 +40,17 @@ export const metadata: Metadata = {
     description: "AI로 5초만에 프로급 상품 상세페이지를 자동 생성",
     type: "website",
     locale: "ko_KR",
+    url: "/",
+    siteName: "SangSePage",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "상세페이지 자동 생성 | SangSePage",
+    description: "AI로 5초만에 프로급 상품 상세페이지를 자동 생성",
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 };
 

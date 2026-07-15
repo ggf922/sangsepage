@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getAbsoluteUrl } from "@/lib/site-url";
 import { Sparkles, CheckCircle } from "lucide-react";
 
 export default function SignupPage() {
@@ -32,7 +33,7 @@ export default function SignupPage() {
       password,
       options: {
         data: { name },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: getAbsoluteUrl("/auth/callback"),
       },
     });
 
