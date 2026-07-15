@@ -1,10 +1,14 @@
 // ============================================================
-// Gemini Nano Banana 이미지 생성 엔진
+// Gemini Nano Banana 이미지 생성 엔진 (v2 - 품질 개선)
 // gemini-2.5-flash-image (free tier) / gemini-3-pro-image (paid)
+//
+// 개선 사항:
+// - 사진작가 브리프 스타일 프롬프트 (Camera/Lighting/Composition/Mood/Colors/Props/Post/Aspect/StyleRef)
+// - 유저 업로드 사진을 inlineData로 참조 전달 (실제 상품과 훨씬 닮은 결과)
 // ============================================================
 
 import { createAdminClient } from "@/lib/supabase/server";
-import type { Product, Template } from "@/lib/types";
+import type { Product, Template, ProductImage } from "@/lib/types";
 import { generateShortId } from "@/lib/utils";
 
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
@@ -12,7 +16,6 @@ const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 // 무료/표준 티어 (Nano Banana / Gemini 2.5 Flash Image - GA)
 const MODEL_FREE = "gemini-2.5-flash-image";
 // 유료 티어 (Nano Banana Pro / Gemini 3 Pro Image - GA)
-// GA(정식) 버전 사용. Preview 버전(gemini-3-pro-image-preview)도 사용 가능
 const MODEL_PRO = "gemini-3-pro-image";
 
 export type ImageRole =
@@ -32,22 +35,96 @@ export interface GeneratedImageResult {
   height: number;
 }
 
+// ============================================================
+// 참조 이미지 처리 (유저 업로드 사진 → base64 inlineData)
+// ============================================================
+
+interface ReferenceImage {
+  mimeType: string;
+  data: string; // base64
+}
+
 /**
- * 하나의 이미지 프롬프트로 Gemini 이미지 생성 후 Supabase Storage 업로드
+ * 유저가 업로드한 상품 사진을 base64로 다운로드 (Gemini inlineData용)
+ * - 실패해도 조용히 null 반환 (참조 없이도 프롬프트만으로 생성 가능)
+ * - 최대 4MB (Gemini inlineData 제한 대응)
  */
+async function fetchReferenceImage(imageUrl: string): Promise<ReferenceImage | null> {
+  try {
+    const res = await fetch(imageUrl, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) {
+      console.warn(`[fetchReferenceImage] HTTP ${res.status} for ${imageUrl}`);
+      return null;
+    }
+    const contentType = res.headers.get("content-type") || "image/jpeg";
+    const buf = Buffer.from(await res.arrayBuffer());
+    // 4MB 초과 시 스킵 (참조 이미지가 너무 크면 프롬프트 전체가 실패할 수 있음)
+    if (buf.byteLength > 4 * 1024 * 1024) {
+      console.warn(`[fetchReferenceImage] 파일 너무 큼 (${buf.byteLength}B) - 스킵`);
+      return null;
+    }
+    return {
+      mimeType: contentType.split(";")[0].trim(),
+      data: buf.toString("base64"),
+    };
+  } catch (e: any) {
+    console.warn(`[fetchReferenceImage] 실패: ${e?.message ?? e}`);
+    return null;
+  }
+}
+
+/**
+ * 특정 role에 어울리는 유저 업로드 사진을 우선순위대로 선택
+ * - role별 매핑에 실패하면 main 사진 fallback
+ */
+function pickUserReferenceImages(product: Product, role: ImageRole): ProductImage[] {
+  const imgs = (product.images ?? []) as ProductImage[];
+  if (imgs.length === 0) return [];
+
+  const roleToProductRole: Record<ImageRole, Array<ProductImage["role"]>> = {
+    hero: ["main", "lifestyle", "detail"],
+    detail_1: ["detail", "main"],
+    detail_2: ["detail", "other", "main"],
+    ingredient: ["ingredient", "detail", "main"],
+    lifestyle: ["lifestyle", "main"],
+    signature: ["main", "lifestyle"],
+  };
+
+  const wanted = roleToProductRole[role] || ["main"];
+  const picked: ProductImage[] = [];
+  const seen = new Set<string>();
+
+  for (const wantRole of wanted) {
+    const found = imgs
+      .filter((i) => i.role === wantRole)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    for (const im of found) {
+      if (!seen.has(im.url)) {
+        picked.push(im);
+        seen.add(im.url);
+      }
+    }
+    if (picked.length >= 2) break; // 최대 2장까지만 참조로 사용 (프롬프트 크기 관리)
+  }
+
+  return picked.slice(0, 2);
+}
+
+// ============================================================
+// 단일 이미지 생성
+// ============================================================
+
 async function generateOneImage(
   prompt: string,
   role: ImageRole,
   user_id: string,
   page_id: string,
-  useProModel = false
+  useProModel = false,
+  referenceImages: ReferenceImage[] = []
 ): Promise<GeneratedImageResult> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY가 설정되지 않았습니다.");
 
-  // Gemini API 키 형식 검증 (참고용 로그만, 실패로 처리하지 않음)
-  // - AIza... : Legacy Standard key (2026-09 이후 거부됨)
-  // - AQ.Ab... : 새 Auth key (2026년 이후 AI Studio 기본 형식)
   const isAuthKey = apiKey.startsWith("AQ.");
   const isStandardKey = apiKey.startsWith("AIza");
   if (!isAuthKey && !isStandardKey) {
@@ -57,17 +134,22 @@ async function generateOneImage(
   }
 
   const model = useProModel ? MODEL_PRO : MODEL_FREE;
-  // 쿼리 파라미터 대신 x-goog-api-key 헤더 사용
-  // (Auth key는 헤더 방식이 더 안정적 — Google 공식 REST 예시도 헤더 사용)
   const url = `${GEMINI_API_BASE}/models/${model}:generateContent`;
 
-  const body = {
-    contents: [
-      {
-        role: "user",
-        parts: [{ text: prompt }],
+  // 참조 이미지가 있으면 프롬프트 파트에 함께 첨부
+  const parts: any[] = [];
+  for (const ref of referenceImages) {
+    parts.push({
+      inlineData: {
+        mimeType: ref.mimeType,
+        data: ref.data,
       },
-    ],
+    });
+  }
+  parts.push({ text: prompt });
+
+  const body = {
+    contents: [{ role: "user", parts }],
     generationConfig: {
       responseModalities: ["IMAGE"],
     },
@@ -86,7 +168,6 @@ async function generateOneImage(
     const errorText = await response.text();
     console.error(`[Gemini image error ${response.status}]`, errorText);
 
-    // 사용자 친화적 힌트
     let hint = "";
     if (response.status === 401 || response.status === 403) {
       hint = " (API 키 문제 — Vercel 환경변수 GEMINI_API_KEY 확인 필요)";
@@ -104,14 +185,12 @@ async function generateOneImage(
   }
 
   const data = await response.json();
-
-  // 응답에서 이미지 데이터 추출
-  const parts = data?.candidates?.[0]?.content?.parts;
-  if (!parts || !Array.isArray(parts)) {
+  const respParts = data?.candidates?.[0]?.content?.parts;
+  if (!respParts || !Array.isArray(respParts)) {
     throw new Error("Gemini 응답에서 이미지를 찾을 수 없습니다.");
   }
 
-  const imagePart = parts.find((p: any) => p.inlineData?.data);
+  const imagePart = respParts.find((p: any) => p.inlineData?.data);
   if (!imagePart) {
     throw new Error("응답에 이미지 데이터가 포함되어 있지 않습니다.");
   }
@@ -120,7 +199,6 @@ async function generateOneImage(
   const mimeType = imagePart.inlineData.mimeType || "image/png";
   const ext = mimeType.split("/")[1] || "png";
 
-  // Supabase Storage 업로드
   const admin = createAdminClient();
   const buffer = Buffer.from(base64, "base64");
   const path = `${user_id}/${page_id}/${role}-${generateShortId(6)}.${ext}`;
@@ -148,83 +226,267 @@ async function generateOneImage(
   };
 }
 
+// ============================================================
+// 프롬프트 빌더 (사진작가 브리프 스타일)
+// ============================================================
+
+interface StyleTokens {
+  bgColor: string; // 예: "warm ivory (#f4ede0)"
+  accentColor: string; // 예: "deep red (#a71d1d)"
+  moodKeywords: string; // 예: "nostalgic, artisanal, heritage"
+  propKeywords: string; // 예: "hanji paper, celadon ceramic, wooden utensils"
+  styleRef: string; // 예: "Kinfolk magazine editorial food photography"
+  fontMood: string; // 예: "serif elegance"
+}
+
+/** 템플릿 코드별 시각적 토큰 */
+function getStyleTokens(templateCode: string, tokens: any): StyleTokens {
+  const colors = tokens?.colors || {};
+  switch (templateCode) {
+    case "kimchi-ogami":
+      return {
+        bgColor: `warm ivory (${colors.background || "#f4ede0"})`,
+        accentColor: `deep Korean red (${colors.primary || "#a71d1d"})`,
+        moodKeywords: "nostalgic, artisanal, heritage, quietly proud, hand-crafted warmth",
+        propKeywords:
+          "hanji paper texture, celadon (청자) ceramic dishes, wooden ladle, linen cloth, dried herbs, aged onggi (옹기) pottery",
+        styleRef:
+          "Kinfolk magazine editorial food photography, Cereal magazine restraint, Korean traditional table setting (한상차림)",
+        fontMood: "serif elegance meets rustic warmth",
+      };
+    case "household-modern":
+      return {
+        bgColor: `pure ivory (${colors.background || "#f5f5f5"})`,
+        accentColor: `charcoal (${colors.primary || "#2d2d2d"})`,
+        moodKeywords: "minimal, functional, calm, honest, restrained",
+        propKeywords:
+          "single geometric prop, natural linen, unfinished wood, negative space, no decorative clutter",
+        styleRef:
+          "Muji product catalog, Kinfolk still life, Japanese Wabi-Sabi minimalism",
+        fontMood: "sans-serif clarity",
+      };
+    case "electronics-tech":
+      return {
+        bgColor: `deep matte black (${colors.background || "#0a0a0a"})`,
+        accentColor: `neon cyber green (${colors.primary || "#00d47e"})`,
+        moodKeywords: "cutting-edge, precise, powerful, dramatic, cinematic",
+        propKeywords:
+          "polished metal, LED under-glow, glass reflection, subtle smoke or particle, tech-lab environment",
+        styleRef:
+          "Apple keynote hero shot, Dyson product film, Sony flagship reveal, Behance electronics editorial",
+        fontMood: "modern geometric sans",
+      };
+    case "health-natural":
+      return {
+        bgColor: `soft beige (${colors.background || "#f0ebe0"})`,
+        accentColor: `sage green (${colors.primary || "#8fa88f"})`,
+        moodKeywords: "clean, honest, botanical, calm, quietly scientific",
+        propKeywords:
+          "fresh herbs, sliced fruit, glass laboratory vials, natural linen, morning window light, dried flowers",
+        styleRef:
+          "Nutrafol brand photography, Ritual vitamins editorial, The New York Times Cooking styling",
+        fontMood: "elegant serif with soft weight",
+      };
+    case "cosmetics-luxury":
+      return {
+        bgColor: `blush cream (${colors.background || "#faf4ee"})`,
+        accentColor: `rose gold (${colors.accent || "#d4af7c"})`,
+        moodKeywords: "luxurious, sensual, sculptural, ethereal, whisper-soft",
+        propKeywords:
+          "silk fabric drape, Carrara marble slab, pearl, subtle golden hour glow, morning mist",
+        styleRef:
+          "Sulwhasoo brand book, Sisley Paris editorial, Chanel Beauty campaign, Vogue Korea beauty spread",
+        fontMood: "italic serif elegance",
+      };
+    default:
+      return {
+        bgColor: `${colors.background || "clean neutral"}`,
+        accentColor: `${colors.primary || "brand"} accent`,
+        moodKeywords: "premium, refined, aspirational",
+        propKeywords: "minimal props, clean surfaces",
+        styleRef: "premium Korean e-commerce editorial",
+        fontMood: "modern serif",
+      };
+  }
+}
+
+/** 상품 → 시각적 설명 */
+function buildProductVisualDesc(product: Product): string {
+  const parts = [product.name];
+  if (product.category) parts.push(`(${product.category})`);
+  if (product.origin) parts.push(`from ${product.origin}`);
+  const mainFeature = product.features?.[0];
+  if (mainFeature) parts.push(`emphasizing "${mainFeature.title}"`);
+  return parts.join(" ");
+}
+
 /**
- * 상품과 템플릿을 바탕으로 여러 이미지의 프롬프트를 자동 생성
+ * 사진작가 브리프 스타일 프롬프트 빌더
+ * 각 필드: Subject / Camera / Lighting / Composition / Mood / Colors / Props / Post / Aspect / StyleRef
  */
+function buildBrief(opts: {
+  subject: string;
+  camera: string;
+  lighting: string;
+  composition: string;
+  mood: string;
+  colors: string;
+  props: string;
+  post: string;
+  aspect: string;
+  styleRef: string;
+  hasReferenceImages: boolean;
+}): string {
+  const refHint = opts.hasReferenceImages
+    ? "The attached reference photo(s) show the actual product — closely match its shape, color, packaging, label, and material texture. Recreate the product faithfully, then re-stage it with the brief below.\n\n"
+    : "";
+
+  return `${refHint}${opts.subject}
+
+CAMERA: ${opts.camera}
+LIGHTING: ${opts.lighting}
+COMPOSITION: ${opts.composition}
+MOOD: ${opts.mood}
+COLORS: ${opts.colors}
+PROPS: ${opts.props}
+POST-PROCESSING: ${opts.post}
+ASPECT: ${opts.aspect}
+STYLE REFERENCE: ${opts.styleRef}
+
+STRICT RULES:
+- Absolutely no text, no letters, no numbers, no logos, no watermarks anywhere in the image.
+- No visible brand names or product labels with text (if reference photo has label text, blur it or replace with a plain color band).
+- No human faces visible; hands may appear only if partial and softly out-of-focus.
+- Photorealistic professional commercial photography, no illustration, no 3D render, no CGI look.`;
+}
+
+// ============================================================
+// 6개 이미지 프롬프트 세트 생성
+// ============================================================
+
 export function buildImagePrompts(
   product: Product,
   template: Template
 ): Array<{ role: ImageRole; prompt: string }> {
   const tokens = template.design_tokens as any;
-  const styleHint = getStyleHint(template.code, tokens);
-  const productDesc = buildProductVisualDesc(product);
+  const style = getStyleTokens(template.code, tokens);
+  const subject = buildProductVisualDesc(product);
+  const hasRefs = (product.images ?? []).length > 0;
+
+  const commonColors = `Dominant background ${style.bgColor}, accent ${style.accentColor}. Naturally saturated, not oversaturated. No neon or artificial colors unless brand-specified.`;
+  const commonPost = `Editorial finish, subtle film grain, gentle color grading, no HDR crunch, no plastic-smooth skin, no over-sharpened edges. Natural depth and dimension.`;
 
   return [
     {
       role: "hero",
-      prompt: `A premium Korean e-commerce hero image for a detail page. Product: ${productDesc}. Style: ${styleHint}. Shot: overhead flat lay or elegant product hero, soft natural lighting, minimalist composition, no text overlay, ${tokens?.colors?.background || 'ivory'} background tone. 4:3 aspect ratio, ultra-high quality product photography, editorial style.`,
+      prompt: buildBrief({
+        subject: `A hero product photograph for a Korean premium e-commerce detail page — a wide overhead flat-lay of ${subject}, centered as the emotional entry point.`,
+        camera: "Medium-format digital, 50mm equivalent lens, top-down 90° overhead angle, camera height ~1.5m above surface, tripod-stable framing",
+        lighting: "Soft window daylight from the upper-left, single 60° diffusion scrim, gentle shadow falloff to the right, 5200K color temperature, no direct sun, no on-camera flash",
+        composition: "Golden-ratio composition, product occupying the upper-center 60% of frame, breathing negative space around, rule-of-thirds cross-point on the product's focal detail",
+        mood: style.moodKeywords,
+        colors: commonColors,
+        props: style.propKeywords,
+        post: commonPost,
+        aspect: "4:3 landscape",
+        styleRef: style.styleRef,
+        hasReferenceImages: hasRefs,
+      }),
     },
     {
       role: "detail_1",
-      prompt: `Detailed close-up product shot: ${productDesc}. Style: ${styleHint}. Focus on texture and material details, dramatic lighting, shallow depth of field. No text. Premium commercial photography.`,
+      prompt: buildBrief({
+        subject: `A dramatic macro close-up of ${subject}, revealing surface texture, material grain, and craftsmanship detail.`,
+        camera: "100mm macro prime lens, f/2.8 shallow depth of field, camera parallel to subject, focus on the most tactile detail (texture, weave, crystal, cut, fiber)",
+        lighting: "Directional side-light 45° from the right, single soft-box, subtle rim light behind the subject to separate from background, 4500K",
+        composition: "Extremely tight framing, fills 90% of frame, foreground element sharp and background gently out-of-focus (bokeh), diagonal flow",
+        mood: `${style.moodKeywords}, intimate, tactile, revealing`,
+        colors: commonColors,
+        props: "Minimal — only the product texture itself is the hero; supporting props kept far out of focus",
+        post: commonPost,
+        aspect: "3:2 landscape",
+        styleRef: `${style.styleRef}, and Chef's Table series macro food styling`,
+        hasReferenceImages: hasRefs,
+      }),
     },
     {
       role: "detail_2",
-      prompt: `Alternative angle product shot: ${productDesc}. Style: ${styleHint}. Different angle from previous, showing another aspect of the product. Clean background, professional lighting.`,
+      prompt: buildBrief({
+        subject: `A 3/4 angle documentary shot of ${subject}, showing a different facet than the hero — the side profile, cross-section, or in-use moment.`,
+        camera: "85mm portrait lens equivalent, f/4, camera angle 35° from horizontal, eye-level with subject",
+        lighting: "Two-point setup — key light from left at 45°, subtle fill from right, natural window quality, 5000K",
+        composition: "Off-center placement (rule-of-thirds), leading line from lower-left drawing the eye to the subject, layered depth (foreground, subject, softly blurred background)",
+        mood: `${style.moodKeywords}, storytelling, natural, unposed`,
+        colors: commonColors,
+        props: style.propKeywords,
+        post: commonPost,
+        aspect: "16:9 wide banner",
+        styleRef: style.styleRef,
+        hasReferenceImages: hasRefs,
+      }),
     },
     {
       role: "ingredient",
-      prompt: `Ingredient/material composition shot for ${productDesc}. ${
-        product.ingredients?.length
-          ? `Featuring: ${product.ingredients.slice(0, 3).map((i) => i.name).join(", ")}.`
-          : ""
-      } Fresh, natural, arranged aesthetically on a wooden or fabric surface. Style: ${styleHint}. No text.`,
+      prompt: buildBrief({
+        subject: `An ingredient/material composition still-life for ${subject}. ${
+          product.ingredients?.length
+            ? `Feature the raw ingredients arranged aesthetically: ${product.ingredients
+                .slice(0, 4)
+                .map((i) => i.name)
+                .join(", ")}.`
+            : "Feature the raw materials/components arranged aesthetically."
+        }`,
+        camera: "50mm lens, top-down overhead, tripod, f/5.6 for full sharpness across the flat-lay",
+        lighting: "Soft overhead diffused daylight, single large scrim, gentle even illumination, no harsh shadows, 5500K",
+        composition: "Ingredients arranged in an organic loose-grid, each with breathing space, some elements slightly overlapping for natural feel, focal ingredient at rule-of-thirds intersection",
+        mood: `${style.moodKeywords}, honest, editorial, botanical`,
+        colors: commonColors,
+        props: "Wooden cutting board or linen fabric as base, small ceramic dishes, subtle sprinkle of related raw material (salt, herbs, sesame, powder — whatever fits the product)",
+        post: commonPost,
+        aspect: "3:2 landscape",
+        styleRef: `${style.styleRef}, and Bon Appétit magazine ingredient spread`,
+        hasReferenceImages: hasRefs,
+      }),
     },
     {
       role: "lifestyle",
-      prompt: `Lifestyle scene featuring ${productDesc}. Warm, inviting Korean home or table setting. ${styleHint}. Aspirational but authentic, showing the product in its natural use context. No text or people faces.`,
+      prompt: buildBrief({
+        subject: `A lifestyle scene showing ${subject} in its natural Korean home-use context — the moment just before or during use, capturing daily-life warmth.`,
+        camera: "35mm wide lens equivalent, f/4, slight elevation (30° down-angle), medium-shot distance",
+        lighting: "Warm morning or golden-hour indoor daylight streaming through window, natural window as key light, soft ambient fill, 4200K warm tone",
+        composition: "Environmental context — the product is present but not dead-center; surrounding elements (table setting, natural morning routine, seasonal touches) tell the story",
+        mood: `${style.moodKeywords}, aspirational yet authentic, lived-in, quietly beautiful, morning calm or evening warmth`,
+        colors: commonColors,
+        props: `Korean home setting — ${style.propKeywords}, plus contextual props (a ceramic cup, an open book, seasonal fruit, folded linen)`,
+        post: `${commonPost}, slight warm color cast for emotional resonance`,
+        aspect: "16:9 wide banner",
+        styleRef: `${style.styleRef}, and Kinfolk domestic scenes, Cereal home features`,
+        hasReferenceImages: hasRefs,
+      }),
     },
     {
       role: "signature",
-      prompt: `Elegant closing/signature image for the brand. Minimal, atmospheric, evocative of the brand's essence. ${styleHint}. Could feature the product silhouette in soft focus, natural elements, or brand-appropriate objects. No text, no logos.`,
+      prompt: buildBrief({
+        subject: `A closing signature image evoking the brand's essence — ${subject} rendered as a poetic still-life, minimal and atmospheric, the final visual note of the detail page.`,
+        camera: "85mm lens, f/2.8, side-on angle 20° above horizontal, slight tilt for artistic composition",
+        lighting: "Single-source moody lighting — window light with 70% falloff to dark, chiaroscuro depth, 4000K",
+        composition: "Extreme negative space (product occupies only 30% of frame), asymmetric balance, contemplative silence, one hero element with one supporting shadow",
+        mood: `${style.moodKeywords}, meditative, poetic, timeless, the emotional climax`,
+        colors: `${commonColors} — allow deeper shadows and reduced saturation for artistic gravitas`,
+        props: "Minimal — one or two carefully chosen supporting objects only, or none at all",
+        post: `${commonPost}, deeper contrast, subtle vignette, film-emulation grade (Portra 400 or Kodak Ektar mood)`,
+        aspect: "3:2 landscape",
+        styleRef: `${style.styleRef}, and Peter Lippmann still-life, Irving Penn simplicity`,
+        hasReferenceImages: hasRefs,
+      }),
     },
   ];
 }
 
-/** 템플릿별 이미지 스타일 힌트 */
-function getStyleHint(templateCode: string, tokens: any): string {
-  const colors = tokens?.colors || {};
-  switch (templateCode) {
-    case "kimchi-ogami":
-      return `Traditional Korean food aesthetic. Warm ivory (#f4ede0) and deep red (#a71d1d) tones. Hanji paper texture background, celadon ceramic props, wooden utensils. Nostalgic, artisanal, heritage feel. Editorial food photography like Kinfolk magazine.`;
-    case "household-modern":
-      return `Muji-inspired minimal aesthetic. Pure white background, soft neutral tones, geometric composition, single subject focus. Clean, functional, calm. Studio product photography.`;
-    case "electronics-tech":
-      return `High-tech premium look. Dark background (#0a0a0a) with neon green accent (#00d47e). Dramatic rim lighting, glossy surfaces, metallic details. Apple/Dyson product shoot style.`;
-    case "health-natural":
-      return `Clean natural health aesthetic. Sage green (#8fa88f) and beige tones. Botanical elements, soft daylight, organic textures. Wellness brand photography.`;
-    case "cosmetics-luxury":
-      return `Luxury beauty aesthetic. Rose (#c9a5a0) and gold (#d4af7c) tones on cream background. Soft diffused lighting, silk fabric, marble surfaces. High-end cosmetic editorial style.`;
-    default:
-      return `Premium Korean e-commerce style with ${colors.background || "clean"} background and ${colors.primary || "brand"} accent color.`;
-  }
-}
+// ============================================================
+// 병렬 생성 (참조 이미지 사전 로드 포함)
+// ============================================================
 
-/** 상품을 시각적 프롬프트용 텍스트로 변환 */
-function buildProductVisualDesc(product: Product): string {
-  const parts = [product.name];
-  if (product.category) parts.push(`(${product.category} product)`);
-  if (product.origin) parts.push(`from ${product.origin}`);
-
-  const mainFeature = product.features?.[0];
-  if (mainFeature) parts.push(`emphasizing ${mainFeature.title}`);
-
-  return parts.join(" ");
-}
-
-/**
- * 상품 이미지 6장을 병렬로 생성
- */
 export async function generateAllImages(
   product: Product,
   template: Template,
@@ -234,22 +496,49 @@ export async function generateAllImages(
 ): Promise<GeneratedImageResult[]> {
   const prompts = buildImagePrompts(product, template);
 
-  // 병렬 생성
-  // - 유료 티어(useProModel=true 또는 결제된 API 키): 6개 동시 병렬
-  // - 무료 티어(안전 배치): 3개씩 + 1.5초 딜레이
-  const results: GeneratedImageResult[] = [];
-  const errors: string[] = [];
+  // === 참조 이미지 사전 로드 ===
+  // 유저가 상품 사진을 올렸다면, 각 role별로 어울리는 참조 사진을 base64로 다운로드해서 캐싱
+  // (한 번만 다운로드하고 여러 role에서 재사용)
+  const productImages = (product.images ?? []) as ProductImage[];
+  const uniqueUrls = new Set<string>();
+  for (const role of ["hero", "detail_1", "detail_2", "ingredient", "lifestyle", "signature"] as ImageRole[]) {
+    for (const im of pickUserReferenceImages(product, role)) {
+      uniqueUrls.add(im.url);
+    }
+  }
 
-  // 결제된 API 키를 사용하는 프로덕션에서는 전체 병렬 실행이 훨씬 빠름
+  const refCache: Record<string, ReferenceImage | null> = {};
+  if (uniqueUrls.size > 0) {
+    console.log(`[generateAllImages] 참조 이미지 ${uniqueUrls.size}장 사전 로드 중...`);
+    await Promise.all(
+      Array.from(uniqueUrls).map(async (url) => {
+        refCache[url] = await fetchReferenceImage(url);
+      })
+    );
+    const loaded = Object.values(refCache).filter(Boolean).length;
+    console.log(`[generateAllImages] 참조 이미지 ${loaded}/${uniqueUrls.size}장 로드 완료`);
+  }
+
+  // === 병렬 생성 ===
   const BATCH_SIZE = useProModel ? 6 : 3;
   const BATCH_DELAY = useProModel ? 0 : 1500;
+
+  const results: GeneratedImageResult[] = [];
+  const errors: string[] = [];
 
   for (let i = 0; i < prompts.length; i += BATCH_SIZE) {
     const batch = prompts.slice(i, i + BATCH_SIZE);
     const settled = await Promise.allSettled(
-      batch.map(({ role, prompt }) =>
-        generateOneImage(prompt, role, user_id, page_id, useProModel)
-      )
+      batch.map(({ role, prompt }) => {
+        // 이 role에 어울리는 참조 이미지 뽑기
+        const refPicks = pickUserReferenceImages(product, role);
+        const refs: ReferenceImage[] = [];
+        for (const p of refPicks) {
+          const cached = refCache[p.url];
+          if (cached) refs.push(cached);
+        }
+        return generateOneImage(prompt, role, user_id, page_id, useProModel, refs);
+      })
     );
 
     for (let j = 0; j < settled.length; j++) {
