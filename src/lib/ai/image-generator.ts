@@ -22,7 +22,10 @@ export type ImageRole =
   | "hero"
   | "detail_1"
   | "detail_2"
+  | "detail_close" // NEW: 극단적 매크로 클로즈업 (질감/디테일)
   | "ingredient"
+  | "process_shot" // NEW: 제조·사용 과정 컷
+  | "comparison" // NEW: Before/After 또는 크기감·활용
   | "lifestyle"
   | "signature";
 
@@ -85,7 +88,10 @@ function pickUserReferenceImages(product: Product, role: ImageRole): ProductImag
     hero: ["main", "lifestyle", "detail"],
     detail_1: ["detail", "main"],
     detail_2: ["detail", "other", "main"],
+    detail_close: ["detail", "main"], // 매크로: detail 사진 우선
     ingredient: ["ingredient", "detail", "main"],
+    process_shot: ["detail", "lifestyle", "main"],
+    comparison: ["main", "lifestyle", "detail"],
     lifestyle: ["lifestyle", "main"],
     signature: ["main", "lifestyle"],
   };
@@ -426,6 +432,22 @@ export function buildImagePrompts(
       }),
     },
     {
+      role: "detail_close",
+      prompt: buildBrief({
+        subject: `An extreme macro close-up of ${subject} — filling the frame with a single revealing detail: the surface grain, fiber weave, crystal edge, glaze reflection, or texture pattern that shows craftsmanship or quality.`,
+        camera: "100mm macro prime, 1:1 magnification, f/2.8 for razor-thin depth of field, tripod-mounted, focus stacking impression",
+        lighting: "Single directional light source at grazing angle (10-15° from surface) to bring out surface texture, no fill light — let shadows deepen the sense of dimension, 4500K",
+        composition: "Frame filled 100% with the texture/detail; no edges of the product visible; abstract-yet-recognizable; the focal micro-plane is dead-center-sharp with all else falling into buttery bokeh",
+        mood: `${style.moodKeywords}, sensory, revealing the invisible, quality made tangible`,
+        colors: commonColors,
+        props: "None — only the product's surface fills the frame",
+        post: commonPost,
+        aspect: "1:1 square",
+        styleRef: `${style.styleRef}, and Levon Biss microsculpture photography for its texture reveal`,
+        hasReferenceImages: hasRefs,
+      }),
+    },
+    {
       role: "ingredient",
       prompt: buildBrief({
         subject: `An ingredient/material composition still-life for ${subject}. ${
@@ -445,6 +467,38 @@ export function buildImagePrompts(
         post: commonPost,
         aspect: "3:2 landscape",
         styleRef: `${style.styleRef}, and Bon Appétit magazine ingredient spread`,
+        hasReferenceImages: hasRefs,
+      }),
+    },
+    {
+      role: "process_shot",
+      prompt: buildBrief({
+        subject: `A candid documentary process shot showing ${subject} being made, crafted, or prepared for use — the human moment behind the product. Show partial hands (no faces), tools mid-action, or the exact instant of transformation. Movement blur on hands is acceptable and desirable for authenticity.`,
+        camera: "35mm lens equivalent, f/4, medium-shot distance, slightly high angle (20° down), handheld feel with subtle motion",
+        lighting: "Natural workshop or kitchen daylight, single window as key, ambient fill from environment, warm 4200K, slight fall-off to shadow for depth",
+        composition: "Environmental frame — the subject being worked on is at rule-of-thirds intersection, hands or tools enter from one edge (usually left), workspace context visible but not distracting",
+        mood: `${style.moodKeywords}, honest labor, hand-crafted, present-moment, quietly proud`,
+        colors: `${commonColors} — allow natural workshop tones, subtle warmth`,
+        props: `Workspace-appropriate — ${style.propKeywords}, plus tools of the trade (wooden board, ceramic vessel, cotton cloth, seasonal ingredients being handled)`,
+        post: `${commonPost}, slight warmth push for humanity`,
+        aspect: "3:2 landscape",
+        styleRef: `${style.styleRef}, and The New York Times profile documentary photography, Chef's Table process cinematography`,
+        hasReferenceImages: hasRefs,
+      }),
+    },
+    {
+      role: "comparison",
+      prompt: buildBrief({
+        subject: `A visual comparison or scale-reference shot for ${subject} — either (a) showing the product alongside a common object for size reference (a hand, a coffee cup, an apple), or (b) showing before/after or with/without in a side-by-side layout, or (c) showing multiple color/size variants arranged systematically.`,
+        camera: "50mm lens equivalent, f/5.6 for full sharpness across all elements, straight-on eye-level angle, tripod-stable",
+        lighting: "Even studio-quality daylight, dual soft-box or large window scrim, no dramatic shadow — the goal here is clear information transfer",
+        composition: "Symmetrical or grid-based layout, elements clearly separated with equal breathing room, comparison objects perfectly aligned on a shared baseline",
+        mood: `${style.moodKeywords}, informative, honest, systematic, editorial-catalog`,
+        colors: commonColors,
+        props: "Neutral scale references or comparison items only; nothing decorative that distracts from the comparison itself",
+        post: commonPost,
+        aspect: "3:2 landscape",
+        styleRef: `${style.styleRef}, and Wirecutter comparison photography, Muji catalog product layout`,
         hasReferenceImages: hasRefs,
       }),
     },
@@ -501,7 +555,18 @@ export async function generateAllImages(
   // (한 번만 다운로드하고 여러 role에서 재사용)
   const productImages = (product.images ?? []) as ProductImage[];
   const uniqueUrls = new Set<string>();
-  for (const role of ["hero", "detail_1", "detail_2", "ingredient", "lifestyle", "signature"] as ImageRole[]) {
+  const ALL_ROLES: ImageRole[] = [
+    "hero",
+    "detail_1",
+    "detail_2",
+    "detail_close",
+    "ingredient",
+    "process_shot",
+    "comparison",
+    "lifestyle",
+    "signature",
+  ];
+  for (const role of ALL_ROLES) {
     for (const im of pickUserReferenceImages(product, role)) {
       uniqueUrls.add(im.url);
     }
@@ -520,7 +585,9 @@ export async function generateAllImages(
   }
 
   // === 병렬 생성 ===
-  const BATCH_SIZE = useProModel ? 6 : 3;
+  // Pro 모델(유료): 9장 전체 병렬 (Gemini 유료 티어 rate limit 여유 있음)
+  // Free 모델: 3장씩 3배치 + 1.5초 딜레이 (rate limit 회피)
+  const BATCH_SIZE = useProModel ? 9 : 3;
   const BATCH_DELAY = useProModel ? 0 : 1500;
 
   const results: GeneratedImageResult[] = [];
