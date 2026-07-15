@@ -66,13 +66,13 @@ export default async function HomePage() {
             />
             <Link
               href="/auth/login"
-              className="hidden text-[13px] font-medium text-ink/80 transition hover:text-brand sm:inline"
+              className="text-[13px] font-medium text-ink/80 transition hover:text-brand"
             >
               {t.common.login}
             </Link>
             <Link
               href="/auth/signup"
-              className="rounded-full bg-brand px-5 py-2 text-[13px] font-medium text-white shadow-sm shadow-brand/20 transition hover:bg-brand-dark hover:shadow-md hover:shadow-brand/30"
+              className="rounded-full bg-brand px-4 py-2 text-[13px] font-medium text-white shadow-sm shadow-brand/20 transition hover:bg-brand-dark hover:shadow-md hover:shadow-brand/30 sm:px-5"
             >
               {t.common.signup}
             </Link>
@@ -100,57 +100,56 @@ export default async function HomePage() {
 
             {/* Hero title */}
             <h1 className="mb-8 font-serif text-[42px] font-bold leading-[1.15] tracking-[-0.02em] text-ink md:text-[62px] md:leading-[1.1] lg:text-[76px]">
-              <span className="block">상품 상세페이지,</span>
+              <span className="block">상세페이지 한 장으로,</span>
               <span className="mt-2 block">
                 <span className="relative inline-block">
-                  <span className="relative z-10 text-brand">AI가 자동으로</span>
+                  <span className="relative z-10 text-brand">3채널 동시 판매</span>
                   <span className="absolute bottom-1 left-0 h-3 w-full rounded-sm bg-brand/10 md:bottom-2 md:h-4" />
-                </span>{" "}
-                만들어 드립니다
+                </span>
               </span>
             </h1>
 
             {/* Subtitle */}
-            <p className="mx-auto mb-12 max-w-2xl text-[17px] leading-[1.7] tracking-tight text-ink/60 md:text-[19px] md:leading-[1.75]">
-              상품 정보만 입력하면{" "}
+            <p className="mx-auto mb-12 max-w-2xl px-2 text-[15px] leading-[1.75] tracking-tight text-ink/60 md:text-[18px] md:leading-[1.8]">
+              상품 정보만 입력하면 AI가{" "}
               <span className="font-medium text-ink/80">
                 12개 섹션 카피 + 6장 이미지
               </span>
-              를 30초 만에 완성.
-              <br className="hidden md:block" />
-              <span className="font-medium text-ink/80">
-                스마트스토어 · 쿠팡 · modoomodoo.com 88마트
-              </span>{" "}
-              즉시 사용 가능한 860px 규격.
+              를 30초 만에 완성해요.
+              <br />
+              <span className="font-medium text-brand">
+                스마트스토어 · 쿠팡 · 88마트
+              </span>
+              에 바로 올릴 수 있는 860px 규격.
             </p>
 
             {/* CTA */}
             <div className="mb-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/auth/signup"
-                className="group inline-flex items-center gap-2 rounded-full bg-brand px-8 py-4 text-[15px] font-semibold tracking-tight text-white shadow-lg shadow-brand/25 transition-all hover:-translate-y-0.5 hover:bg-brand-dark hover:shadow-xl hover:shadow-brand/35"
+                className="group inline-flex items-center justify-center gap-2 rounded-full bg-brand px-8 py-4 text-[15px] font-semibold tracking-tight text-white shadow-lg shadow-brand/25 transition-all hover:-translate-y-0.5 hover:bg-brand-dark hover:shadow-xl hover:shadow-brand/35"
               >
                 무료로 3장 만들어보기
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
               <Link
                 href="#styles"
-                className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/70 px-8 py-4 text-[15px] font-semibold tracking-tight text-ink/80 backdrop-blur transition-all hover:border-brand/30 hover:bg-white hover:text-brand"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-black/10 bg-white/70 px-8 py-4 text-[15px] font-semibold tracking-tight text-ink/80 backdrop-blur transition-all hover:border-brand/30 hover:bg-white hover:text-brand"
               >
                 샘플 스타일 미리보기
               </Link>
             </div>
 
             {/* Trust indicators */}
-            <div className="flex flex-col items-center justify-center gap-3 text-[13px] text-ink/50 sm:flex-row sm:gap-6">
+            <div className="flex flex-col items-center justify-center gap-2.5 text-[13px] text-ink/50 sm:flex-row sm:gap-6">
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="h-4 w-4 text-brand/70" />
-                <span>신규가입 100P 무료</span>
+                <span>가입 즉시 <b className="font-semibold text-ink/70">100P</b> 무료 지급</span>
               </div>
               <div className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block" />
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="h-4 w-4 text-brand/70" />
-                <span>카드 등록 불필요</span>
+                <span>카드 등록 없이 시작</span>
               </div>
               <div className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block" />
               <div className="flex items-center gap-1.5">
@@ -180,13 +179,13 @@ export default async function HomePage() {
           <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-brand">
             Features
           </p>
-          <h2 className="mb-5 font-serif text-[38px] font-bold leading-[1.2] tracking-[-0.02em] text-ink md:text-[48px]">
+          <h2 className="mb-5 font-serif text-[32px] font-bold leading-[1.25] tracking-[-0.02em] text-ink md:text-[48px] md:leading-[1.2]">
             왜 <span className="text-brand">88km</span>인가요?
           </h2>
-          <p className="text-[16px] leading-[1.7] text-ink/60 md:text-[17px]">
-            외주 20만원짜리 상세페이지를 3천원에.
+          <p className="text-[15px] leading-[1.75] text-ink/60 md:text-[17px] md:leading-[1.7]">
+            외주 20만원짜리 상세페이지를 <span className="font-semibold text-brand">3천원</span>에.
             <br />
-            품질은 그대로, 시간은 100배 빠르게.
+            품질은 그대로, 시간은 <span className="font-semibold text-brand">100배 빠르게</span>.
           </p>
         </div>
 
@@ -234,7 +233,7 @@ export default async function HomePage() {
             <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-brand">
               Templates
             </p>
-            <h2 className="mb-5 font-serif text-[38px] font-bold leading-[1.2] tracking-[-0.02em] text-ink md:text-[48px]">
+            <h2 className="mb-5 font-serif text-[32px] font-bold leading-[1.25] tracking-[-0.02em] text-ink md:text-[48px] md:leading-[1.2]">
               <span className="text-brand">5가지</span> 프리미엄 스타일
             </h2>
             <p className="text-[16px] leading-[1.7] text-ink/60 md:text-[17px]">
@@ -288,7 +287,7 @@ export default async function HomePage() {
           <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-brand">
             Pricing
           </p>
-          <h2 className="mb-5 font-serif text-[38px] font-bold leading-[1.2] tracking-[-0.02em] text-ink md:text-[48px]">
+          <h2 className="mb-5 font-serif text-[32px] font-bold leading-[1.25] tracking-[-0.02em] text-ink md:text-[48px] md:leading-[1.2]">
             투명한 <span className="text-brand">포인트</span> 요금제
           </h2>
           <p className="text-[16px] leading-[1.7] text-ink/60 md:text-[17px]">

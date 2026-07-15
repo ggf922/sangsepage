@@ -45,13 +45,13 @@ export default function GuidePage() {
           <div className="flex items-center gap-3">
             <Link
               href="/auth/login"
-              className="hidden text-[13px] font-medium text-ink/80 transition hover:text-brand sm:inline"
+              className="text-[13px] font-medium text-ink/80 transition hover:text-brand"
             >
               로그인
             </Link>
             <Link
               href="/auth/signup"
-              className="rounded-full bg-brand px-5 py-2 text-[13px] font-medium text-white shadow-sm shadow-brand/20 transition hover:bg-brand-dark hover:shadow-md hover:shadow-brand/30"
+              className="rounded-full bg-brand px-4 py-2 text-[13px] font-medium text-white shadow-sm shadow-brand/20 transition hover:bg-brand-dark hover:shadow-md hover:shadow-brand/30 sm:px-5"
             >
               무료 회원가입
             </Link>
