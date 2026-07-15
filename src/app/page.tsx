@@ -26,7 +26,7 @@ export default async function HomePage() {
               <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent" />
             </div>
             <span className="font-serif text-[19px] font-bold tracking-tight text-brand">
-              SangSePage
+              88km
             </span>
           </Link>
           <nav className="hidden items-center gap-8 md:flex">
@@ -116,7 +116,7 @@ export default async function HomePage() {
               를 30초 만에 완성.
               <br className="hidden md:block" />
               <span className="font-medium text-ink/80">
-                스마트스토어 · 쿠팡 · 자사몰
+                스마트스토어 · 쿠팡 · modoomodoo.com 88마트
               </span>{" "}
               즉시 사용 가능한 860px 규격.
             </p>
@@ -178,7 +178,7 @@ export default async function HomePage() {
             Features
           </p>
           <h2 className="mb-5 font-serif text-[38px] font-bold leading-[1.2] tracking-[-0.02em] text-ink md:text-[48px]">
-            왜 <span className="text-brand">SangSePage</span>인가요?
+            왜 <span className="text-brand">88km</span>인가요?
           </h2>
           <p className="text-[16px] leading-[1.7] text-ink/60 md:text-[17px]">
             외주 20만원짜리 상세페이지를 3천원에.
@@ -363,12 +363,12 @@ export default async function HomePage() {
             <div className="flex items-center gap-2.5">
               <div className="h-6 w-6 rounded bg-brand" />
               <span className="font-serif text-[15px] font-bold tracking-tight text-brand">
-                SangSePage
+                88km
               </span>
             </div>
             <div className="flex flex-col items-center gap-2 md:items-end">
               <p className="text-[13px] text-ink/50">
-                © 2026 SangSePage. All rights reserved.
+                © 2026 88km. All rights reserved.
               </p>
               <p className="text-[12px] text-ink/40">
                 AI로 만드는 상세페이지의 새로운 표준

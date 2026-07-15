@@ -92,7 +92,7 @@ export const ko: Dictionary = {
   // Brand
   brand: {
     name: "상세페이지",
-    fullName: "SangSePage",
+    fullName: "88km",
     tagline: "AI로 완성하는 한국형 상세페이지",
     description:
       "5가지 스타일 템플릿, 4개국어 지원. 30P부터 시작하는 프로급 상세페이지 자동 생성 서비스",

@@ -20,9 +20,9 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "이용 안내서 · SangSePage",
+  title: "이용 안내서 · 88km",
   description:
-    "SangSePage 사용법과 상세페이지 퀄러티를 높이는 방법을 자세히 안내합니다.",
+    "88km 사용법과 상세페이지 퀄러티를 높이는 방법을 자세히 안내합니다.",
 };
 
 export default function GuidePage() {
@@ -36,7 +36,7 @@ export default function GuidePage() {
               <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent" />
             </div>
             <span className="font-serif text-[19px] font-bold tracking-tight text-brand">
-              SangSePage
+              88km
             </span>
           </Link>
           <div className="flex items-center gap-3">
@@ -67,7 +67,7 @@ export default function GuidePage() {
             GUIDE
           </div>
           <h1 className="mb-4 font-serif text-[44px] font-bold leading-tight tracking-tight md:text-[56px]">
-            SangSePage <span className="text-brand">이용 안내서</span>
+            88km <span className="text-brand">이용 안내서</span>
           </h1>
           <p className="mx-auto max-w-2xl text-[16px] leading-relaxed text-ink/70">
             처음 사용하시는 분도 5분이면 첫 상세페이지를 완성할 수 있어요.
@@ -512,7 +512,7 @@ export default function GuidePage() {
       {/* Footer */}
       <footer className="border-t border-black/[0.06] bg-ivory-light">
         <div className="container mx-auto px-6 py-8 text-center text-[13px] text-ink/50">
-          © {new Date().getFullYear()} SangSePage · 문의: modoomodoo88@gmail.com
+          © {new Date().getFullYear()} 88km · 문의: modoomodoo88@gmail.com
         </div>
       </footer>
     </main>

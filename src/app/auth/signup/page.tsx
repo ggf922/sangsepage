@@ -84,7 +84,7 @@ export default function SignupPage() {
         <Link href="/" className="mb-8 flex items-center justify-center gap-2">
           <div className="h-10 w-10 rounded-lg bg-brand" />
           <span className="font-serif text-2xl font-bold text-brand">
-            SangSePage
+            88km
           </span>
         </Link>
 

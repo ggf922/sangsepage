@@ -402,7 +402,7 @@ function renderKimchiOgami(input: RenderInput): string {
 
   <!-- Footer -->
   <footer style="background:${text};color:#fff;padding:32px 60px;text-align:center;">
-    <p style="font-size:12px;opacity:0.6;margin:0;">본 상세페이지는 SangSePage AI로 제작되었습니다.</p>
+    <p style="font-size:12px;opacity:0.6;margin:0;">본 상세페이지는 88km AI로 제작되었습니다.</p>
   </footer>
 
 </div>
@@ -506,7 +506,7 @@ function renderHouseholdModern(input: RenderInput): string {
   </section>
   ` : ""}
 
-  <footer style="background:${text};color:#fff;padding:24px 80px;text-align:center;font-size:11px;opacity:0.6;">© SangSePage AI</footer>
+  <footer style="background:${text};color:#fff;padding:24px 80px;text-align:center;font-size:11px;opacity:0.6;">© 88km AI</footer>
 
 </div></body></html>`;
 }
@@ -621,7 +621,7 @@ function renderElectronicsTech(input: RenderInput): string {
   </section>
   ` : ""}
 
-  <footer style="background:#000;color:#666;padding:24px 60px;text-align:center;font-size:11px;">© SangSePage AI</footer>
+  <footer style="background:#000;color:#666;padding:24px 60px;text-align:center;font-size:11px;">© 88km AI</footer>
 
 </div></body></html>`;
 }
@@ -740,7 +740,7 @@ function renderHealthNatural(input: RenderInput): string {
   </section>
   ` : ""}
 
-  <footer style="background:${text};color:#fff;padding:24px 60px;text-align:center;font-size:11px;opacity:0.7;">© SangSePage AI</footer>
+  <footer style="background:${text};color:#fff;padding:24px 60px;text-align:center;font-size:11px;opacity:0.7;">© 88km AI</footer>
 
 </div></body></html>`;
 }
@@ -871,7 +871,7 @@ function renderCosmeticsLuxury(input: RenderInput): string {
   </section>
   ` : ""}
 
-  <footer style="background:${text};color:#fff;padding:24px 60px;text-align:center;font-size:11px;opacity:0.7;">© SangSePage AI</footer>
+  <footer style="background:${text};color:#fff;padding:24px 60px;text-align:center;font-size:11px;opacity:0.7;">© 88km AI</footer>
 
 </div></body></html>`;
 }

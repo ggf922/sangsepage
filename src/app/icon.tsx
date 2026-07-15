@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 /**
- * SangSePage 동적 파비콘
+ * 88km 동적 파비콘
  * Next.js 15 App Router가 자동으로 /icon.png으로 서빙합니다.
  */
 export const size = { width: 32, height: 32 };
@@ -20,13 +20,13 @@ export default function Icon() {
           justifyContent: "center",
           borderRadius: 6,
           fontFamily: "serif",
-          fontSize: 22,
-          fontWeight: 700,
+          fontSize: 18,
+          fontWeight: 800,
           color: "#FFF8E7",
-          letterSpacing: -1,
+          letterSpacing: -1.5,
         }}
       >
-        S
+        88
       </div>
     ),
     { ...size }

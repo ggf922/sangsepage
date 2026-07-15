@@ -7,8 +7,8 @@ import type { MetadataRoute } from "next";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "SangSePage - AI 상세페이지 자동 생성",
-    short_name: "SangSePage",
+    name: "88km - AI 상세페이지 자동 생성",
+    short_name: "88km",
     description:
       "AI로 5초만에 프로급 상품 상세페이지를 자동 생성하세요. 5가지 스타일, 4개국어 지원.",
     start_url: "/",

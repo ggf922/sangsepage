@@ -1,11 +1,11 @@
 import { ImageResponse } from "next/og";
 
 /**
- * SangSePage 소셜 공유용 OG 이미지 (동적 생성)
+ * 88km 소셜 공유용 OG 이미지 (동적 생성)
  * 카톡, 페이스북, 트위터, 슬랙 등에서 링크 공유 시 표시됩니다.
  * 표준: 1200x630 (Facebook 권장)
  */
-export const alt = "SangSePage - AI 상세페이지 자동 생성";
+export const alt = "88km - AI 상세페이지 자동 생성";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -70,14 +70,15 @@ export default async function OpengraphImage() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 64,
+              fontSize: 52,
               fontWeight: 800,
               color: "#FFF8E7",
               fontFamily: "serif",
+              letterSpacing: -2,
               boxShadow: "0 10px 40px rgba(139, 26, 26, 0.25)",
             }}
           >
-            S
+            88
           </div>
           <div
             style={{
@@ -88,7 +89,7 @@ export default async function OpengraphImage() {
               letterSpacing: -1,
             }}
           >
-            SangSePage
+            88km
           </div>
         </div>
 

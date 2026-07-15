@@ -55,7 +55,7 @@ export default async function AdminLayout({
           </div>
           <Link href="/" className="flex items-center gap-2">
             <div className="h-6 w-6 rounded bg-brand" />
-            <span className="font-serif font-bold">SangSePage Admin</span>
+            <span className="font-serif font-bold">88km Admin</span>
           </Link>
         </div>
 

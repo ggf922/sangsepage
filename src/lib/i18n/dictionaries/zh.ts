@@ -50,8 +50,8 @@ export const zh: Dictionary = {
   },
 
   brand: {
-    name: "SangSePage",
-    fullName: "SangSePage",
+    name: "88km",
+    fullName: "88km",
     tagline: "AI 韩式商品详情页生成器",
     description: "5种风格模板，4种语言。仅需30P即可生成专业级商品详情页。",
   },
@@ -62,7 +62,7 @@ export const zh: Dictionary = {
     passwordConfirm: "确认密码",
     name: "姓名",
     loginTitle: "登录",
-    loginSubtitle: "欢迎使用 SangSePage",
+    loginSubtitle: "欢迎使用 88km",
     signupTitle: "注册",
     signupSubtitle: "注册即赠 100P",
     signupBonus: "注册赠送 100P",

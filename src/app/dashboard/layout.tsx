@@ -51,7 +51,7 @@ export default async function DashboardLayout({
           <Link href="/" className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-brand" />
             <span className="font-serif text-lg font-bold text-brand">
-              SangSePage
+              88km
             </span>
           </Link>
         </div>

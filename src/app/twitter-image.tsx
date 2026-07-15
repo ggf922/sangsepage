@@ -1,13 +1,13 @@
 import { ImageResponse } from "next/og";
 
 /**
- * SangSePage 트위터 카드 이미지 (동적 생성)
+ * 88km 트위터 카드 이미지 (동적 생성)
  * Twitter/X에서 링크 공유 시 표시됩니다.
  * 표준: 1200x600 (summary_large_image)
  * 
  * Note: opengraph-image와 동일한 디자인을 사용하되 크기만 다릅니다.
  */
-export const alt = "SangSePage - AI 상세페이지 자동 생성";
+export const alt = "88km - AI 상세페이지 자동 생성";
 export const size = { width: 1200, height: 600 };
 export const contentType = "image/png";
 
@@ -46,13 +46,14 @@ export default async function TwitterImage() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 56,
+              fontSize: 44,
               fontWeight: 800,
               color: "#FFF8E7",
               fontFamily: "serif",
+              letterSpacing: -2,
             }}
           >
-            S
+            88
           </div>
           <div
             style={{
@@ -63,7 +64,7 @@ export default async function TwitterImage() {
               letterSpacing: -1,
             }}
           >
-            SangSePage
+            88km
           </div>
         </div>
 

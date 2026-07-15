@@ -50,8 +50,8 @@ export const en: Dictionary = {
   },
 
   brand: {
-    name: "SangSePage",
-    fullName: "SangSePage",
+    name: "88km",
+    fullName: "88km",
     tagline: "AI-Powered Korean-Style Product Detail Pages",
     description:
       "5 style templates, 4 languages. Professional product detail pages from just 30P.",
@@ -63,7 +63,7 @@ export const en: Dictionary = {
     passwordConfirm: "Confirm Password",
     name: "Name",
     loginTitle: "Log In",
-    loginSubtitle: "Welcome to SangSePage",
+    loginSubtitle: "Welcome to 88km",
     signupTitle: "Sign Up",
     signupSubtitle: "Get 100P free upon signup",
     signupBonus: "100P Welcome Bonus",
