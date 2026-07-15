@@ -1,0 +1,21 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background: Brand red (deep burgundy) -->
+  <rect width="512" height="512" rx="96" fill="#8B1A1A"/>
+  
+  <!-- Sparkle accent (top-right) -->
+  <g opacity="0.5">
+    <circle cx="395" cy="120" r="6" fill="#FFF8E7"/>
+    <path d="M395 96 L395 144 M371 120 L419 120" stroke="#FFF8E7" stroke-width="2" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Serif "S" letter (styled like Nanum Myeongjo) -->
+  <text 
+    x="256" 
+    y="365" 
+    font-family="'Nanum Myeongjo', 'Noto Serif KR', 'Times New Roman', serif" 
+    font-size="340" 
+    font-weight="700" 
+    fill="#FFF8E7"
+    text-anchor="middle"
+    letter-spacing="-8">S</text>
+</svg>
