@@ -48,6 +48,12 @@ export default async function HomePage() {
             >
               요금제
             </Link>
+            <Link
+              href="/guide"
+              className="text-[13px] font-medium tracking-wide text-ink/70 transition-colors hover:text-brand"
+            >
+              이용안내
+            </Link>
           </nav>
           <div className="flex items-center gap-3">
             <LanguageSwitcher

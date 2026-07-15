@@ -10,6 +10,7 @@ import {
   LogOut,
   Coins,
   Shield,
+  BookOpen,
 } from "lucide-react";
 import { LogoutButton } from "@/components/logout-button";
 import { getI18n } from "@/lib/i18n/server";
@@ -74,6 +75,9 @@ export default async function DashboardLayout({
           </NavLink>
           <NavLink href="/dashboard/mypage" icon={<User />}>
             {t.nav.mypage}
+          </NavLink>
+          <NavLink href="/guide" icon={<BookOpen />}>
+            이용 안내
           </NavLink>
 
           {isAdmin && (
