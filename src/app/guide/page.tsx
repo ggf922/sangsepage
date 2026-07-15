@@ -233,7 +233,7 @@ export default function GuidePage() {
               <b>세로 슬라이드 이미지</b>와 <b>HTML 소스</b>를 모두 제공합니다.
             </FeatureBlock>
             <FeatureBlock icon={<Share2 className="h-5 w-5" />} title="공유 링크">
-              <code className="rounded bg-brand/10 px-1.5 py-0.5 text-brand text-[12px]">sangsepage.com/p/&#123;id&#125;</code>{" "}
+              <code className="rounded bg-brand/10 px-1.5 py-0.5 text-brand text-[12px]">88km.shop/p/&#123;id&#125;</code>{" "}
               형식의 공유 링크를 클라이언트·팀원에게 바로 보낼 수 있어요.
             </FeatureBlock>
             <FeatureBlock icon={<Globe className="h-5 w-5" />} title="4개 국어 자동 번역">
@@ -378,16 +378,31 @@ export default function GuidePage() {
                 icon={<Lightbulb className="h-5 w-5" />}
               >
                 <p className="mb-3">
-                  최근 도입된 <b>&ldquo;자기 검수 모드&rdquo;</b>는 AI가 카피를 1차 생성한 뒤,
-                  <b>스스로 다시 읽고 어색한 부분을 수정</b>하는 2-Pass 프로세스입니다.
-                  약간의 추가 비용이 들지만 <b>완성도가 확연히 올라갑니다</b>.
+                  <b>&ldquo;자기 검수 모드&rdquo;</b>는 AI가 카피를 1차 생성한 뒤,
+                  <b>자기가 쓴 초고를 다시 읽고 어색한 부분을 스스로 수정</b>하는 <b>2-Pass 프로세스</b>입니다.
+                  사람으로 치면 &ldquo;초고 → 퇴고&rdquo; 과정을 한 번의 요청 안에서 자동으로 수행합니다.
                 </p>
+                <div className="grid gap-3 md:grid-cols-2 mb-3">
+                  <div className="rounded-lg border border-black/10 bg-white p-4 text-[13px]">
+                    <b className="text-ink/60">Pass 1 (초고)</b>
+                    <div className="mt-1 text-ink/70">
+                      &ldquo;맛있는 김치, 좋은 재료로 만들었습니다&rdquo;
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-brand/30 bg-brand/[0.03] p-4 text-[13px]">
+                    <b className="text-brand">Pass 2 (자기 검수 후)</b>
+                    <div className="mt-1 text-ink/85">
+                      &ldquo;3대째 지켜온 종갓집 레시피 — 첫 한 입에 알게 됩니다.&rdquo;
+                    </div>
+                  </div>
+                </div>
                 <div className="rounded-lg bg-brand/5 border border-brand/20 p-4 text-[13px] text-ink/75">
-                  <b>ON일 때:</b> 자연스러운 흐름, 반복 어휘 제거, 더 강력한 후킹<br />
-                  <b>OFF일 때:</b> 기본 1-Pass — 빠르고 저렴
+                  <b>검수 기준:</b> 반복 어휘 제거 · 후킹 문구 강화 · 구체적 표현 · 카테고리 톤 일치<br />
+                  <b>ON일 때:</b> 소요 시간 2배(약 15~20초), 완성도 확연히 상승<br />
+                  <b>OFF일 때:</b> 기본 1-Pass — 빠르고 저렴 (8~12초)
                 </div>
                 <p className="mt-3 text-[13px] text-ink/60">
-                  ※ 관리자가 설정하는 옵션으로, 기본은 OFF입니다. 필요하시면 문의해 주세요.
+                  ※ 관리자가 설정하는 옵션으로, 기본은 OFF입니다. 프리미엄/럭셔리 상품에 특히 효과적입니다.
                 </p>
               </QualityTip>
             </div>
