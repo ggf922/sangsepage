@@ -16,6 +16,10 @@ const openai = new OpenAI({
 // 필요시 환경변수 COPY_MODEL로 오버라이드 가능 (예: "gpt-4o-mini"로 원복)
 const COPY_MODEL = process.env.COPY_MODEL || "gpt-4o";
 
+// Self-critique 2-pass: 카피 생성 후 자체 검수로 진부한 표현 제거 (비용 2배, 품질 향상)
+// 활성화: COPY_SELF_CRITIQUE=true (Vercel 환경변수)
+const SELF_CRITIQUE_ENABLED = process.env.COPY_SELF_CRITIQUE === "true";
+
 export interface GeneratedCopy {
   hero: {
     badge: string;
@@ -39,6 +43,12 @@ export interface GeneratedCopy {
   process?: {
     heading: string;
     steps: Array<{ title: string; description: string }>;
+  };
+  maker_story?: {
+    heading: string; // 예: "만든 사람들"
+    body: string; // 100~200자 브랜드/만든 사람 이야기
+    quote?: string; // 짧은 인용 (50자 이내, 만든 사람의 한 마디)
+    attribution?: string; // 예: "오가미 김치명인 김순자"
   };
   signature: {
     heading: string;
@@ -280,6 +290,12 @@ ${productContext}
       { "title": "단계명 (10자 이내)", "description": "설명 (40자 이내)" }
     ]
   },
+  "maker_story": {
+    "heading": "만든 사람 섹션 헤딩 (20자 이내, 예: '만든 사람들', '이 상품이 태어난 곳')",
+    "body": "만든 사람·브랜드 이야기 (100~200자, 브랜드 스토리·인물·장소·철학을 스토리텔링으로. 상품의 【추가 정보】에 brand_name/brand_story가 있으면 반드시 활용, 없으면 상품 특성에 어울리는 가상의 스토리 대신 원산지·제조사 정보로 대체)",
+    "quote": "만든 사람의 한 마디 인용 (50자 이내, 신뢰감 있는 짧은 문장)",
+    "attribution": "인용 화자 (예: '오가미 김치명인 김순자', '설악산 자연농원 대표', 정보 없으면 카테고리에 맞게 '제조사 대표')"
+  },
   "signature": {
     "heading": "브랜드 시그니처 헤딩 (25자 이내, 마무리 임팩트)",
     "body": "마무리 문구 (100자 이내, 브랜드의 약속·철학)"
@@ -324,13 +340,95 @@ ${productContext}
     throw new Error("AI가 응답을 반환하지 않았습니다.");
   }
 
+  let parsed: GeneratedCopy;
   try {
-    const parsed = JSON.parse(content) as GeneratedCopy;
-    return normalizeCopy(parsed);
+    parsed = JSON.parse(content) as GeneratedCopy;
   } catch (e) {
     console.error("[generateCopy] JSON parse failed:", content);
     throw new Error("AI 응답을 파싱할 수 없습니다. 다시 시도해주세요.");
   }
+
+  // === Self-critique 2-pass (선택적 활성화) ===
+  if (SELF_CRITIQUE_ENABLED) {
+    try {
+      parsed = await selfCritiqueAndRefine(parsed, systemPrompt);
+    } catch (e: any) {
+      console.warn(`[generateCopy] self-critique 실패 (원본 카피 유지): ${e?.message ?? e}`);
+      // 실패해도 1-pass 결과 그대로 반환 (안전 폴백)
+    }
+  }
+
+  return normalizeCopy(parsed);
+}
+
+/**
+ * Self-critique 2-pass:
+ * 1-pass에서 나온 카피를 GPT가 스스로 검수·수정
+ * - 진부한 표현 찾아내기 ("최고의", "완벽한", "특별한" 등)
+ * - 근거 없는 과장 축소
+ * - 원본 데이터에 없는 사실 날조 방지 (hallucination 제거)
+ * - JSON 구조는 유지
+ */
+async function selfCritiqueAndRefine(
+  draft: GeneratedCopy,
+  originalSystemPrompt: string
+): Promise<GeneratedCopy> {
+  const critiqueSystem = `당신은 한국 이커머스 상세페이지 카피의 시니어 에디터입니다.
+초안 카피를 검수하여 아래 원칙에 따라 개선합니다.
+
+# 검수 원칙 (엄격히 적용)
+1. 진부한 광고 표현 찾아 제거·교체
+   - 대상: "최고의", "완벽한", "특별한 경험", "고객 만족 1위", "당신만을 위한",
+           "역사와 전통", "지금 만나보세요", "감동을 선사", "혁신적인" 등
+   - 교체 방향: 구체적 사실·수치·감각 언어로
+
+2. 근거 없는 과장 축소
+   - "100% 만족", "부작용 제로", "기적의 효과" 같은 검증 불가 표현 제거
+   - 확실한 것만 남기기
+
+3. 사실 날조(hallucination) 제거
+   - 원본 상품 데이터에 없는 인증·수상·수치·인물명을 만들어냈다면 삭제
+   - 확실치 않은 것은 삭제, 있는 것만 유지
+
+4. 문장 리듬 개선
+   - 3개 이상 형용사 나열 → 하나만 남기고 삭제
+   - 문장이 너무 길면 짧게 끊기
+   - "~입니다" 남발 → 다양한 종결어미 사용
+
+5. JSON 구조·필드명은 절대 변경하지 말 것 (내용만 수정)
+
+# 출력
+개선된 JSON을 반환. 원본 초안과 동일한 스키마·필드명 유지.
+다른 텍스트 없이 순수 JSON만.`;
+
+  const critiquePrompt = `아래는 상세페이지 카피 초안입니다. 검수 원칙에 따라 개선된 버전을 JSON으로 반환하세요.
+
+# 참고: 원본 카피 생성 시 사용된 프롬프트 (톤·스타일 유지용)
+${originalSystemPrompt.slice(0, 800)}...
+
+# 초안 카피 (개선 대상)
+${JSON.stringify(draft, null, 2)}
+
+# 요청
+위 초안에서 진부한 표현·과장·날조를 제거하고, 구체적이고 감각적인 표현으로 개선하세요.
+JSON 구조는 그대로 유지하고, 개선된 카피만 JSON으로 반환하세요.`;
+
+  const response = await openai.chat.completions.create({
+    model: COPY_MODEL,
+    messages: [
+      { role: "system", content: critiqueSystem },
+      { role: "user", content: critiquePrompt },
+    ],
+    response_format: { type: "json_object" },
+    temperature: 0.5, // 검수는 낮은 창의성 (규칙 기반)
+    max_tokens: 3500,
+  });
+
+  const refined = response.choices[0].message.content;
+  if (!refined) {
+    throw new Error("Self-critique 응답 없음");
+  }
+  return JSON.parse(refined) as GeneratedCopy;
 }
 
 /** 상품 정보를 프롬프트용 텍스트로 조립 */
@@ -423,6 +521,7 @@ function normalizeCopy(copy: Partial<GeneratedCopy>): GeneratedCopy {
     points: copy.points ?? [],
     ingredients_intro: copy.ingredients_intro,
     process: copy.process,
+    maker_story: copy.maker_story,
     signature: {
       heading: copy.signature?.heading ?? "",
       body: copy.signature?.body ?? "",
