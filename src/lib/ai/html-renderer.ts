@@ -100,6 +100,105 @@ function renderSpecTable(items: GeneratedCopy["spec_summary"]["items"]): string 
 }
 
 // ============================================================
+// 신뢰 배지 (인증·수상) - 5개 템플릿 공통 유틸
+// ============================================================
+
+/**
+ * 인증마크·수상 이력을 시각적 배지로 렌더링
+ * - extra_info.certifications, extra_info.awards 활용
+ * - 없으면 빈 문자열 반환 (섹션 자동 생략)
+ */
+function renderTrustBadges(product: Product, opts: {
+  primary: string;
+  bg: string;
+  bgLight: string;
+  text: string;
+  serifClass?: string;
+}): string {
+  const info = product.extra_info || {};
+  const certs = (info.certifications as string[] | undefined) ?? [];
+  const awards = (info.awards as string[] | undefined) ?? [];
+  if (certs.length === 0 && awards.length === 0) return "";
+
+  const renderChips = (items: string[], icon: string) =>
+    items
+      .map(
+        (v) => `
+      <div style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;background:${opts.bgLight};border:1.5px solid ${opts.primary}22;border-radius:24px;margin:6px;font-size:13px;font-weight:600;color:${opts.text};">
+        <span style="font-size:16px;">${icon}</span>
+        <span>${esc(v)}</span>
+      </div>`
+      )
+      .join("");
+
+  return `
+  <section class="section" style="background:${opts.bg};text-align:center;">
+    <h2 ${opts.serifClass ? `class="${opts.serifClass}"` : ""} style="font-size:24px;font-weight:700;color:${opts.primary};margin-bottom:8px;">믿을 수 있는 이유</h2>
+    <p style="font-size:13px;color:${opts.text};opacity:0.6;margin-bottom:24px;">공식 인증과 수상 이력으로 증명된 품질</p>
+    <div style="max-width:720px;margin:0 auto;">
+      ${renderChips(certs, "✓")}
+      ${renderChips(awards, "★")}
+    </div>
+  </section>`;
+}
+
+// ============================================================
+// 브랜드/만든 사람 스토리 섹션 - 5개 템플릿 공통 유틸
+// ============================================================
+
+/**
+ * "만든 사람들" 브랜드 스토리 카드
+ * - copy.maker_story 활용, 없으면 extra_info.brand_story fallback
+ * - 이미지: process_shot 우선, 없으면 lifestyle
+ */
+function renderMakerStory(
+  copy: GeneratedCopy,
+  product: Product,
+  images: GeneratedImageResult[],
+  opts: {
+    primary: string;
+    bg: string;
+    bgLight: string;
+    text: string;
+    accent: string;
+    serifClass?: string;
+  }
+): string {
+  const info = product.extra_info || {};
+  const maker = copy.maker_story;
+  const brandName = info.brand_name as string | undefined;
+  const brandStory = info.brand_story as string | undefined;
+
+  // 카피 우선, 없으면 extra_info로 조립, 그것도 없으면 렌더링 스킵
+  const heading = maker?.heading ?? (brandName ? `${brandName}의 이야기` : "");
+  const body = maker?.body ?? brandStory ?? "";
+  if (!heading || !body) return "";
+
+  const processImg = findImage(images, "process_shot") || findImage(images, "lifestyle");
+  const quote = maker?.quote;
+  const attribution = maker?.attribution;
+
+  return `
+  <section class="section" style="background:${opts.bg};">
+    <div style="max-width:720px;margin:0 auto;">
+      <h2 ${opts.serifClass ? `class="${opts.serifClass}"` : ""} style="font-size:32px;font-weight:700;color:${opts.primary};text-align:center;margin-bottom:8px;">${esc(heading)}</h2>
+      <div style="width:40px;height:2px;background:${opts.primary};margin:16px auto 32px;"></div>
+      ${processImg ? `<img src="${processImg}" alt="만든 사람들" style="width:100%;border-radius:8px;margin-bottom:32px;box-shadow:0 8px 32px rgba(0,0,0,0.08);">` : ""}
+      <p style="font-size:16px;color:${opts.text};line-height:2;text-align:center;margin-bottom:${quote ? "32px" : "0"};">${esc(body)}</p>
+      ${
+        quote
+          ? `
+      <div style="background:${opts.bgLight};border-left:4px solid ${opts.primary};padding:24px 28px;border-radius:0 8px 8px 0;margin-top:32px;">
+        <p ${opts.serifClass ? `class="${opts.serifClass}"` : ""} style="font-size:18px;font-style:italic;color:${opts.primary};line-height:1.7;margin-bottom:${attribution ? "12px" : "0"};">"${esc(quote)}"</p>
+        ${attribution ? `<p style="font-size:13px;color:${opts.text};opacity:0.65;text-align:right;margin:0;">— ${esc(attribution)}</p>` : ""}
+      </div>`
+          : ""
+      }
+    </div>
+  </section>`;
+}
+
+// ============================================================
 // A: 김치·오가미 스타일
 // ============================================================
 
@@ -116,9 +215,28 @@ function renderKimchiOgami(input: RenderInput): string {
   const heroImg = findImage(images, "hero") || findUserImage(product, "main");
   const detail1 = findImage(images, "detail_1") || findUserImage(product, "detail");
   const detail2 = findImage(images, "detail_2");
+  const detailCloseImg = findImage(images, "detail_close");
   const ingredientImg = findImage(images, "ingredient");
+  const processImg = findImage(images, "process_shot");
+  const comparisonImg = findImage(images, "comparison");
   const lifestyleImg = findImage(images, "lifestyle");
   const signatureImg = findImage(images, "signature");
+
+  const trustBadges = renderTrustBadges(product, {
+    primary,
+    bg: bgLight,
+    bgLight: "#ffffff",
+    text,
+    serifClass: "serif",
+  });
+  const makerStory = renderMakerStory(copy, product, images, {
+    primary,
+    bg,
+    bgLight,
+    text,
+    accent,
+    serifClass: "serif",
+  });
 
   return `<!DOCTYPE html>
 <html lang="ko">
@@ -175,10 +293,22 @@ function renderKimchiOgami(input: RenderInput): string {
   </section>
   ` : ""}
 
+  <!-- 4b. Trust Badges (인증·수상) -->
+  ${trustBadges}
+
   <!-- 5. Detail Images -->
   ${detail1 ? `
   <section style="background:${bg};padding:0;">
     <img src="${detail1}" alt="상세컷 1" style="width:100%;">
+  </section>
+  ` : ""}
+
+  <!-- 5b. Close-up Macro (질감·디테일) -->
+  ${detailCloseImg ? `
+  <section class="section" style="background:${bgLight};text-align:center;">
+    <h2 class="serif" style="font-size:26px;font-weight:700;color:${primary};margin-bottom:8px;">가까이서 보다</h2>
+    <div class="divider"></div>
+    <img src="${detailCloseImg}" alt="클로즈업" style="width:100%;max-width:600px;margin:24px auto 0;border-radius:8px;box-shadow:0 12px 40px rgba(0,0,0,0.1);">
   </section>
   ` : ""}
 
@@ -211,11 +341,12 @@ function renderKimchiOgami(input: RenderInput): string {
   </section>
   ` : ""}
 
-  <!-- 8. Process -->
+  <!-- 8. Process (스텝 다이어그램 + 사진) -->
   ${copy.process ? `
   <section class="section" style="background:${bg};">
     <h2 class="serif" style="font-size:32px;font-weight:700;color:${primary};text-align:center;margin-bottom:12px;">${esc(copy.process.heading)}</h2>
     <div class="divider"></div>
+    ${processImg ? `<img src="${processImg}" alt="공정" style="width:100%;border-radius:8px;margin:32px 0;">` : ""}
     <div style="display:grid;grid-template-columns:repeat(${copy.process.steps.length}, 1fr);gap:16px;margin-top:40px;">
       ${copy.process.steps.map((step, i) => `
       <div style="text-align:center;">
@@ -225,6 +356,18 @@ function renderKimchiOgami(input: RenderInput): string {
       </div>
       `).join("")}
     </div>
+  </section>
+  ` : ""}
+
+  <!-- 8b. Maker Story (만든 사람들) -->
+  ${makerStory}
+
+  <!-- 8c. Comparison (크기/구성 비교) -->
+  ${comparisonImg ? `
+  <section class="section" style="background:${bgLight};text-align:center;">
+    <h2 class="serif" style="font-size:26px;font-weight:700;color:${primary};margin-bottom:8px;">한눈에 보기</h2>
+    <div class="divider"></div>
+    <img src="${comparisonImg}" alt="구성 비교" style="width:100%;margin-top:24px;border-radius:8px;">
   </section>
   ` : ""}
 
@@ -282,7 +425,14 @@ function renderHouseholdModern(input: RenderInput): string {
 
   const heroImg = findImage(images, "hero") || findUserImage(product, "main");
   const detail1 = findImage(images, "detail_1");
+  const detailCloseImg = findImage(images, "detail_close");
+  const comparisonImg = findImage(images, "comparison");
   const lifestyleImg = findImage(images, "lifestyle");
+
+  const trustBadges = renderTrustBadges(product, { primary, bg, bgLight, text });
+  const makerStory = renderMakerStory(copy, product, images, {
+    primary, bg, bgLight, text, accent: primary,
+  });
 
   return `<!DOCTYPE html>
 <html lang="ko"><head><meta charset="UTF-8"><title>${esc(product.name)}</title>
@@ -334,6 +484,14 @@ function renderHouseholdModern(input: RenderInput): string {
     </table>
   </section>
 
+  ${detailCloseImg ? `<img src="${detailCloseImg}" alt="close-up" style="width:100%;">` : ""}
+
+  ${trustBadges}
+
+  ${makerStory}
+
+  ${comparisonImg ? `<img src="${comparisonImg}" alt="comparison" style="width:100%;">` : ""}
+
   ${lifestyleImg ? `<img src="${lifestyleImg}" alt="lifestyle" style="width:100%;">` : ""}
 
   <section class="section" style="background:${primary};color:#fff;text-align:center;">
@@ -368,7 +526,24 @@ function renderElectronicsTech(input: RenderInput): string {
   const heroImg = findImage(images, "hero") || findUserImage(product, "main");
   const detail1 = findImage(images, "detail_1");
   const detail2 = findImage(images, "detail_2");
+  const detailCloseImg = findImage(images, "detail_close");
+  const comparisonImg = findImage(images, "comparison");
   const lifestyleImg = findImage(images, "lifestyle");
+
+  // 다크 테마: 배지·스토리도 다크 톤으로
+  const trustBadges = renderTrustBadges(product, {
+    primary,
+    bg: bgLight,
+    bgLight: "#252525",
+    text: "#e5e5e5",
+  });
+  const makerStory = renderMakerStory(copy, product, images, {
+    primary,
+    bg,
+    bgLight,
+    text: "#e5e5e5",
+    accent: primary,
+  });
 
   return `<!DOCTYPE html>
 <html lang="ko"><head><meta charset="UTF-8"><title>${esc(product.name)}</title>
@@ -424,6 +599,14 @@ function renderElectronicsTech(input: RenderInput): string {
   ` : ""}
 
   ${detail2 ? `<img src="${detail2}" alt="detail 2" style="width:100%;">` : ""}
+  ${detailCloseImg ? `<img src="${detailCloseImg}" alt="close-up" style="width:100%;">` : ""}
+
+  ${trustBadges}
+
+  ${comparisonImg ? `<img src="${comparisonImg}" alt="comparison" style="width:100%;">` : ""}
+
+  ${makerStory}
+
   ${lifestyleImg ? `<img src="${lifestyleImg}" alt="lifestyle" style="width:100%;">` : ""}
 
   <section class="section" style="background:${primary};color:${bg};text-align:center;">
@@ -458,8 +641,18 @@ function renderHealthNatural(input: RenderInput): string {
 
   const heroImg = findImage(images, "hero") || findUserImage(product, "main");
   const ingredientImg = findImage(images, "ingredient");
+  const detailCloseImg = findImage(images, "detail_close");
+  const processImg = findImage(images, "process_shot");
+  const comparisonImg = findImage(images, "comparison");
   const lifestyleImg = findImage(images, "lifestyle");
   const signatureImg = findImage(images, "signature");
+
+  const trustBadges = renderTrustBadges(product, {
+    primary, bg, bgLight, text, serifClass: "serif",
+  });
+  const makerStory = renderMakerStory(copy, product, images, {
+    primary, bg, bgLight, text, accent: primary, serifClass: "serif",
+  });
 
   return `<!DOCTYPE html>
 <html lang="ko"><head><meta charset="UTF-8"><title>${esc(product.name)}</title>
@@ -525,6 +718,14 @@ function renderHealthNatural(input: RenderInput): string {
     </table>
   </section>
 
+  ${detailCloseImg ? `<img src="${detailCloseImg}" alt="close-up" style="width:100%;">` : ""}
+
+  ${trustBadges}
+
+  ${makerStory}
+
+  ${comparisonImg ? `<img src="${comparisonImg}" alt="comparison" style="width:100%;">` : ""}
+
   ${lifestyleImg ? `<img src="${lifestyleImg}" alt="lifestyle" style="width:100%;">` : ""}
 
   <section class="section" style="background:${primary};color:#fff;text-align:center;">
@@ -560,9 +761,19 @@ function renderCosmeticsLuxury(input: RenderInput): string {
 
   const heroImg = findImage(images, "hero") || findUserImage(product, "main");
   const detail1 = findImage(images, "detail_1");
+  const detailCloseImg = findImage(images, "detail_close");
   const ingredientImg = findImage(images, "ingredient");
+  const processImg = findImage(images, "process_shot");
+  const comparisonImg = findImage(images, "comparison");
   const lifestyleImg = findImage(images, "lifestyle");
   const signatureImg = findImage(images, "signature");
+
+  const trustBadges = renderTrustBadges(product, {
+    primary, bg, bgLight, text, serifClass: "serif",
+  });
+  const makerStory = renderMakerStory(copy, product, images, {
+    primary, bg, bgLight, text, accent, serifClass: "serif",
+  });
 
   return `<!DOCTYPE html>
 <html lang="ko"><head><meta charset="UTF-8"><title>${esc(product.name)}</title>
@@ -636,6 +847,14 @@ function renderCosmeticsLuxury(input: RenderInput): string {
       `).join("")}
     </table>
   </section>
+
+  ${detailCloseImg ? `<img src="${detailCloseImg}" alt="close-up" style="width:100%;">` : ""}
+
+  ${trustBadges}
+
+  ${makerStory}
+
+  ${comparisonImg ? `<img src="${comparisonImg}" alt="comparison" style="width:100%;">` : ""}
 
   ${lifestyleImg ? `<img src="${lifestyleImg}" alt="lifestyle" style="width:100%;">` : ""}
 
