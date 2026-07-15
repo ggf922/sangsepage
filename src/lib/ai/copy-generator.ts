@@ -16,8 +16,8 @@ const openai = new OpenAI({
 // 필요시 환경변수 COPY_MODEL로 오버라이드 가능 (예: "gpt-4o-mini"로 원복)
 const COPY_MODEL = process.env.COPY_MODEL || "gpt-4o";
 
-// Self-critique 2-pass: 카피 생성 후 자체 검수로 진부한 표현 제거 (비용 2배, 품질 향상)
-// 활성화: COPY_SELF_CRITIQUE=true (Vercel 환경변수)
+// Self-critique 2-pass: 카피 생성 후 자체 검수로 진부한 표현·과장·hallucination 제거
+// 활성화: COPY_SELF_CRITIQUE=true (Vercel 환경변수). 비용 2배, 품질 향상. 기본 OFF.
 const SELF_CRITIQUE_ENABLED = process.env.COPY_SELF_CRITIQUE === "true";
 
 export interface GeneratedCopy {
