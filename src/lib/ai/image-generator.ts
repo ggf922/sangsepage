@@ -45,17 +45,21 @@ async function generateOneImage(
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY가 설정되지 않았습니다.");
 
-  // Gemini API 키 형식 검증 — "AIzaSy"로 시작하는 39자 키여야 함
-  // 그 외 형식(OAuth 토큰, 다른 Google 서비스 키 등)은 401 유발
-  if (!apiKey.startsWith("AIza")) {
-    throw new Error(
-      "GEMINI_API_KEY 형식이 잘못되었습니다. 'AIzaSy...'로 시작하는 Google AI Studio 키여야 합니다. " +
-      "https://aistudio.google.com/apikey 에서 발급받으세요."
+  // Gemini API 키 형식 검증 (참고용 로그만, 실패로 처리하지 않음)
+  // - AIza... : Legacy Standard key (2026-09 이후 거부됨)
+  // - AQ.Ab... : 새 Auth key (2026년 이후 AI Studio 기본 형식)
+  const isAuthKey = apiKey.startsWith("AQ.");
+  const isStandardKey = apiKey.startsWith("AIza");
+  if (!isAuthKey && !isStandardKey) {
+    console.warn(
+      `[Gemini] Unrecognized API key prefix. Expected 'AQ.' (auth) or 'AIza' (standard).`
     );
   }
 
   const model = useProModel ? MODEL_PRO : MODEL_FREE;
-  const url = `${GEMINI_API_BASE}/models/${model}:generateContent?key=${apiKey}`;
+  // 쿼리 파라미터 대신 x-goog-api-key 헤더 사용
+  // (Auth key는 헤더 방식이 더 안정적 — Google 공식 REST 예시도 헤더 사용)
+  const url = `${GEMINI_API_BASE}/models/${model}:generateContent`;
 
   const body = {
     contents: [
@@ -71,7 +75,10 @@ async function generateOneImage(
 
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+    },
     body: JSON.stringify(body),
   });
 
