@@ -9,7 +9,9 @@ import {
   Coins,
   BarChart3,
   ArrowLeft,
+  Wallet,
 } from "lucide-react";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export default async function AdminLayout({
   children,
@@ -32,6 +34,13 @@ export default async function AdminLayout({
   if (profile?.role !== "admin") {
     redirect("/dashboard");
   }
+
+  // 대기중인 충전 신청 카운트 (사이드바 뱃지용)
+  const admin = createAdminClient();
+  const { count: pendingChargeCount } = await admin
+    .from("charge_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending");
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -58,6 +67,13 @@ export default async function AdminLayout({
           </AdminNavLink>
           <AdminNavLink href="/admin/pages" icon={<FileText />}>
             생성 페이지 모니터링
+          </AdminNavLink>
+          <AdminNavLink
+            href="/admin/charges"
+            icon={<Wallet />}
+            badge={pendingChargeCount ?? 0}
+          >
+            충전 승인
           </AdminNavLink>
           <AdminNavLink href="/admin/points" icon={<Coins />}>
             포인트 상품 관리
@@ -87,10 +103,12 @@ function AdminNavLink({
   href,
   icon,
   children,
+  badge,
 }: {
   href: string;
   icon: React.ReactNode;
   children: React.ReactNode;
+  badge?: number;
 }) {
   return (
     <Link
@@ -98,7 +116,12 @@ function AdminNavLink({
       className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-300 transition hover:bg-slate-800 hover:text-white"
     >
       <span className="[&>svg]:h-4 [&>svg]:w-4">{icon}</span>
-      {children}
+      <span className="flex-1">{children}</span>
+      {badge !== undefined && badge > 0 && (
+        <span className="rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-bold text-white">
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }

@@ -170,6 +170,42 @@ export interface PointPackage {
   created_at: string;
 }
 
+// ============ 포인트 충전 신청 (무통장입금) ============
+export type ChargeStatus = "pending" | "approved" | "rejected" | "cancelled";
+
+export interface ChargeRequest {
+  id: string;
+  user_id: string;
+  package_id: string | null;
+  points: number;
+  amount: number;
+  depositor_name: string;
+  contact: string | null;
+  memo: string | null;
+  status: ChargeStatus;
+  approved_by: string | null;
+  approved_at: string | null;
+  admin_memo: string | null;
+  transaction_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// 은행 계좌 정보 (충전 안내용)
+export const BANK_ACCOUNT = {
+  bank: "케이뱅크",
+  number: "100 300 095296",
+  holder: "큰바구니",
+  fullText: "케이뱅크 100 300 095296 큰바구니",
+} as const;
+
+export const CHARGE_STATUS_META: Record<ChargeStatus, { label: string; color: string; bgColor: string }> = {
+  pending: { label: "입금 대기", color: "#0369a1", bgColor: "#dbeafe" },
+  approved: { label: "충전 완료", color: "#15803d", bgColor: "#dcfce7" },
+  rejected: { label: "거부됨", color: "#b91c1c", bgColor: "#fee2e2" },
+  cancelled: { label: "취소됨", color: "#6b7280", bgColor: "#f3f4f6" },
+};
+
 // ============ Point Cost Constants ============
 export const POINT_COSTS = {
   CREATE_PAGE: 30,

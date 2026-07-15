@@ -9,17 +9,25 @@ export default async function MyPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: profile }, { data: transactions }] = await Promise.all([
-    supabase.from("users").select("*").eq("id", user!.id).single(),
-    supabase
-      .from("point_transactions")
-      .select("*")
-      .eq("user_id", user!.id)
-      .order("created_at", { ascending: false })
-      .limit(10),
-  ]);
+  const [{ data: profile }, { data: transactions }, { data: pendingCharges }] =
+    await Promise.all([
+      supabase.from("users").select("*").eq("id", user!.id).single(),
+      supabase
+        .from("point_transactions")
+        .select("*")
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false })
+        .limit(10),
+      supabase
+        .from("charge_requests")
+        .select("id, amount, points, depositor_name, created_at")
+        .eq("user_id", user!.id)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false }),
+    ]);
 
   const points = profile?.points ?? 0;
+  const pendingCount = pendingCharges?.length ?? 0;
 
   return (
     <div className="p-8">
@@ -31,6 +39,29 @@ export default async function MyPage() {
           내 정보와 포인트를 관리합니다.
         </p>
       </div>
+
+      {/* 대기 중인 충전 알림 */}
+      {pendingCount > 0 && (
+        <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="mb-1 flex items-center gap-1 font-medium text-blue-900">
+                💰 처리 대기중인 충전 신청 {pendingCount}건
+              </p>
+              <p className="text-sm text-blue-800">
+                <strong>케이뱅크 100 300 095296 큰바구니</strong>로 입금 후 관리자
+                확인을 기다려주세요.
+              </p>
+            </div>
+            <Link
+              href="/dashboard/mypage/charge"
+              className="whitespace-nowrap rounded-lg bg-white px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-100"
+            >
+              신청 확인 →
+            </Link>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 md:grid-cols-3">
         {/* Profile Card */}
