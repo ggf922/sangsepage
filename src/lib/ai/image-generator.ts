@@ -202,12 +202,16 @@ export async function generateAllImages(
 ): Promise<GeneratedImageResult[]> {
   const prompts = buildImagePrompts(product, template);
 
-  // 병렬 생성 (Gemini 무료 티어: 분당 10 req 제한 있음, 조금 조절)
+  // 병렬 생성
+  // - 유료 티어(useProModel=true 또는 결제된 API 키): 6개 동시 병렬
+  // - 무료 티어(안전 배치): 3개씩 + 1.5초 딜레이
   const results: GeneratedImageResult[] = [];
   const errors: string[] = [];
 
-  // 3개씩 배치로 처리
-  const BATCH_SIZE = 3;
+  // 결제된 API 키를 사용하는 프로덕션에서는 전체 병렬 실행이 훨씬 빠름
+  const BATCH_SIZE = useProModel ? 6 : 3;
+  const BATCH_DELAY = useProModel ? 0 : 1500;
+
   for (let i = 0; i < prompts.length; i += BATCH_SIZE) {
     const batch = prompts.slice(i, i + BATCH_SIZE);
     const settled = await Promise.allSettled(
@@ -225,9 +229,8 @@ export async function generateAllImages(
       }
     }
 
-    // 다음 배치 전에 살짝 딜레이 (rate limit 방지)
-    if (i + BATCH_SIZE < prompts.length) {
-      await new Promise((r) => setTimeout(r, 1500));
+    if (i + BATCH_SIZE < prompts.length && BATCH_DELAY > 0) {
+      await new Promise((r) => setTimeout(r, BATCH_DELAY));
     }
   }
 
