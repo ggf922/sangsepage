@@ -11,9 +11,9 @@ const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
 // 무료/표준 티어 (Nano Banana / Gemini 2.5 Flash Image - GA)
 const MODEL_FREE = "gemini-2.5-flash-image";
-// 유료 티어 (Nano Banana Pro / Gemini 3 Pro Image - Preview)
-// 주의: 정확한 모델명은 "-preview" 접미사 필수!
-const MODEL_PRO = "gemini-3-pro-image-preview";
+// 유료 티어 (Nano Banana Pro / Gemini 3 Pro Image - GA)
+// GA(정식) 버전 사용. Preview 버전(gemini-3-pro-image-preview)도 사용 가능
+const MODEL_PRO = "gemini-3-pro-image";
 
 export type ImageRole =
   | "hero"
