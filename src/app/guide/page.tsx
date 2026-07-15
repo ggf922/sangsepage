@@ -374,7 +374,7 @@ export default function GuidePage() {
 
               <QualityTip
                 num="06"
-                title="Self-Critique(자기 검수) 모드 활용 (Pro)"
+                title="Self-Critique(자기 검수) 모드 활용"
                 icon={<Lightbulb className="h-5 w-5" />}
               >
                 <p className="mb-3">
@@ -396,13 +396,41 @@ export default function GuidePage() {
                     </div>
                   </div>
                 </div>
-                <div className="rounded-lg bg-brand/5 border border-brand/20 p-4 text-[13px] text-ink/75">
+                <div className="rounded-lg bg-brand/5 border border-brand/20 p-4 text-[13px] text-ink/75 mb-3">
                   <b>검수 기준:</b> 반복 어휘 제거 · 후킹 문구 강화 · 구체적 표현 · 카테고리 톤 일치<br />
                   <b>ON일 때:</b> 소요 시간 2배(약 15~20초), 완성도 확연히 상승<br />
                   <b>OFF일 때:</b> 기본 1-Pass — 빠르고 저렴 (8~12초)
                 </div>
+
+                <p className="mt-4 mb-2 font-semibold text-ink">🎯 Self-Critique가 자동 적용되는 3가지 경우</p>
+                <div className="space-y-2 text-[13px]">
+                  <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 p-3">
+                    <span className="rounded-full bg-amber-500 text-white text-[11px] font-bold px-2 py-0.5 flex-shrink-0">1</span>
+                    <div>
+                      <b className="text-amber-900">★ Pro 회원</b> — Pro 등급 회원은{" "}
+                      <b>모든 페이지 생성에서 자동으로 Self-Critique가 적용</b>됩니다.
+                      추가 요금 없이 프리미엄 품질을 항상 사용하실 수 있습니다.
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 rounded-lg bg-brand/[0.03] border border-brand/20 p-3">
+                    <span className="rounded-full bg-brand text-white text-[11px] font-bold px-2 py-0.5 flex-shrink-0">2</span>
+                    <div>
+                      <b className="text-brand">고급 모드 체크박스 (+15P)</b> — Free 회원도 페이지 생성 시
+                      <b> &ldquo;AI 카피 재검수&rdquo; 체크박스</b>를 선택해 건별로 자유롭게 사용할 수 있습니다.
+                      추가 15P만 부담하시면 됩니다 (기본 30P → 45P).
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 rounded-lg bg-blue-50 border border-blue-200 p-3">
+                    <span className="rounded-full bg-blue-500 text-white text-[11px] font-bold px-2 py-0.5 flex-shrink-0">3</span>
+                    <div>
+                      <b className="text-blue-900">🔁 재생성 시 자동 무료 적용</b> — 첫 결과가 마음에 안 드셔서
+                      결과 페이지의 <b>&ldquo;재생성&rdquo; 버튼</b>을 누르시면, 같은 30P만 차감하고
+                      <b> Self-Critique는 무료로 자동 적용</b>됩니다. 재도전 시엔 더 정제된 카피가 나옵니다.
+                    </div>
+                  </div>
+                </div>
                 <p className="mt-3 text-[13px] text-ink/60">
-                  ※ 관리자가 설정하는 옵션으로, 기본은 OFF입니다. 프리미엄/럭셔리 상품에 특히 효과적입니다.
+                  ※ 페이지 결과 화면에서 <b>&ldquo;✨ Self-Critique 2-Pass 적용됨&rdquo;</b> 배지로 실제 적용 여부를 확인할 수 있습니다.
                 </p>
               </QualityTip>
             </div>
@@ -444,6 +472,21 @@ export default function GuidePage() {
             </Faq>
             <Faq q="영어/일본어 페이지도 자동으로 만들어지나요?">
               네. 상단 언어 스위처로 언어를 바꾸면 <b>4개 국어(한/영/일/중)</b>로 자동 번역된 페이지가 표시됩니다.
+            </Faq>
+            <Faq q="Pro 회원은 뭐가 다른가요?">
+              <b>Pro 회원</b>은 모든 페이지 생성 시 <b>Self-Critique 2-Pass가 자동 적용</b>되어
+              추가 요금 없이 항상 최고 품질의 카피를 받을 수 있습니다. 등급 승격은 관리자에게 문의해 주세요.
+            </Faq>
+            <Faq q="재생성이 뭔가요? 언제 사용하나요?">
+              페이지 결과가 마음에 들지 않을 때 상세 화면의 <b>&ldquo;재생성&rdquo; 버튼</b>을 누르면
+              같은 상품·스타일로 완전히 새로운 카피/이미지를 만듭니다. 이때{" "}
+              <b>Self-Critique가 무료로 자동 적용</b>되어 첫 번보다 정제된 결과를 얻을 수 있습니다.
+              비용은 기본 30P만 차감됩니다.
+            </Faq>
+            <Faq q="고급 모드(+15P)는 어떻게 사용하나요?">
+              페이지 생성 마법사의 <b>3단계 &ldquo;언어 선택&rdquo;</b>에서 &ldquo;AI가 카피를 스스로 재검수&rdquo;
+              체크박스를 켜시면 됩니다. 총 <b>45P (기본 30P + 고급 15P)</b>가 차감되며, 진부한 표현 제거와
+              후킹 강화가 자동으로 적용됩니다.
             </Faq>
           </div>
         </div>

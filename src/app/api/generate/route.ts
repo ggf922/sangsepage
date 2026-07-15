@@ -36,6 +36,8 @@ interface GenerateRequestBody {
   template_id: string;
   language?: Language;
   use_pro_model?: boolean; // Nano Banana Pro 사용 여부
+  premium_mode?: boolean; // 사용자가 '고급 모드(+15P)' 체크박스 선택
+  source_page_id?: string; // 재생성 시 원본 페이지 ID (자동 Self-Critique ON)
 }
 
 export async function POST(req: NextRequest) {
@@ -49,7 +51,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "잘못된 요청 형식입니다." }, { status: 400 });
   }
 
-  const { product_id, template_id, language = "ko", use_pro_model = false } = body;
+  const {
+    product_id,
+    template_id,
+    language = "ko",
+    use_pro_model = false,
+    premium_mode = false,
+    source_page_id,
+  } = body;
 
   if (!product_id || !template_id) {
     return NextResponse.json(
@@ -70,6 +79,44 @@ export async function POST(req: NextRequest) {
   }
 
   const admin = createAdminClient();
+
+  // ---------- 2-B. 회원 프로필 로드 (tier 확인) ----------
+  const { data: profileRow } = await admin
+    .from("users")
+    .select("tier, points")
+    .eq("id", user.id)
+    .single();
+
+  const userTier: "free" | "pro" = profileRow?.tier === "pro" ? "pro" : "free";
+  const isProUser = userTier === "pro";
+
+  // ---------- 2-C. 재생성 여부 확인 ----------
+  // source_page_id가 있으면 재생성 요청 → 원본이 본인 페이지인지 검증
+  let regenerationCount = 0;
+  let isRegeneration = false;
+
+  if (source_page_id) {
+    const { data: sourcePage } = await admin
+      .from("generated_pages")
+      .select("id, user_id, regeneration_count")
+      .eq("id", source_page_id)
+      .single();
+
+    if (!sourcePage || sourcePage.user_id !== user.id) {
+      return NextResponse.json(
+        { error: "재생성 원본 페이지에 접근할 수 없습니다." },
+        { status: 403 }
+      );
+    }
+    isRegeneration = true;
+    regenerationCount = (sourcePage.regeneration_count ?? 0) + 1;
+  }
+
+  // ---------- 2-D. Self-Critique 자동 적용 규칙 (3가지) ----------
+  // ① Pro 회원 → 항상 ON
+  // ② 사용자 명시적 선택 (고급 모드 체크박스) → ON
+  // ③ 재생성 → ON
+  const selfCritiqueEnabled = isProUser || premium_mode || isRegeneration;
 
   // ---------- 3. 상품 로드 (본인 소유 확인) ----------
   const { data: productRow, error: productError } = await supabase
@@ -114,17 +161,36 @@ export async function POST(req: NextRequest) {
   const template = templateRow as Template;
 
   // ---------- 5. 포인트 차감 ----------
-  const cost = POINT_COSTS.CREATE_PAGE;
+  // 기본 30P, 고급 모드(+15P), 단 Pro 회원과 재생성은 추가 요금 없음
+  let cost = POINT_COSTS.CREATE_PAGE;
+  const premiumSurchargeApplied = premium_mode && !isProUser && !isRegeneration;
+  if (premiumSurchargeApplied) {
+    cost += POINT_COSTS.PREMIUM_MODE_SURCHARGE;
+  }
+
+  const modeLabels: string[] = [];
+  if (isProUser) modeLabels.push("Pro혜택");
+  else if (premium_mode) modeLabels.push("고급모드+15P");
+  if (isRegeneration) modeLabels.push(`재생성#${regenerationCount}`);
+  if (selfCritiqueEnabled) modeLabels.push("SelfCritique");
+
+  const modeSuffix = modeLabels.length > 0 ? ` [${modeLabels.join(",")}]` : "";
 
   const deductResult = await deductPoints({
     user_id: user.id,
     amount: cost,
-    description: `상세페이지 생성 - ${product.name} (${template.name})`,
+    description: `상세페이지 생성 - ${product.name} (${template.name})${modeSuffix}`,
     metadata: {
       product_id,
       template_id,
       language,
       template_code: template.code,
+      user_tier: userTier,
+      premium_mode,
+      self_critique: selfCritiqueEnabled,
+      is_regeneration: isRegeneration,
+      regeneration_count: regenerationCount,
+      source_page_id: source_page_id ?? null,
     },
   });
 
@@ -147,6 +213,11 @@ export async function POST(req: NextRequest) {
       points_used: cost,
       max_edits: MAX_EDITS_DEFAULT,
       edit_count: 0,
+      // === Self-Critique / 재생성 추적 ===
+      regeneration_count: regenerationCount,
+      source_page_id: source_page_id ?? null,
+      self_critique_used: selfCritiqueEnabled,
+      premium_requested: premium_mode,
     })
     .select()
     .single();
@@ -171,10 +242,15 @@ export async function POST(req: NextRequest) {
   try {
     console.log(`[generate] Starting AI pipeline for page ${page_id}`);
 
-    // 7-1. 카피 생성 (GPT-4o mini)
+    // 7-1. 카피 생성 (GPT-4o) — Self-Critique 여부 명시적 전달
     const copyStart = Date.now();
-    console.log(`[generate] Calling generateCopy...`);
-    const copy = await generateCopy(product, template, language);
+    console.log(
+      `[generate] Calling generateCopy... (tier=${userTier}, premium=${premium_mode}, ` +
+      `regen=${isRegeneration}, selfCritique=${selfCritiqueEnabled})`
+    );
+    const copy = await generateCopy(product, template, language, {
+      selfCritique: selfCritiqueEnabled,
+    });
     console.log(`[generate] Copy generated in ${Date.now() - copyStart}ms`);
 
     // 7-2. 이미지 생성 (Gemini Nano Banana × 6장)
@@ -231,6 +307,10 @@ export async function POST(req: NextRequest) {
       duration_ms: totalTime,
       image_count: images.length,
       balance_after: deductResult.balance_after,
+      points_used: cost,
+      self_critique_used: selfCritiqueEnabled,
+      user_tier: userTier,
+      is_regeneration: isRegeneration,
     });
   } catch (err: any) {
     const errorMessage = err?.message ?? String(err);

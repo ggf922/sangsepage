@@ -84,6 +84,18 @@ export default async function MyPage() {
                 {profile?.role === "admin" ? "관리자" : "일반"}
               </span>
             </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">등급</span>
+              {profile?.tier === "pro" ? (
+                <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
+                  ★ Pro (Self-Critique 자동)
+                </span>
+              ) : (
+                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                  Free
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

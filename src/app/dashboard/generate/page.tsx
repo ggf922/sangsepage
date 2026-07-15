@@ -21,10 +21,11 @@ export default async function GeneratePage() {
         .select("id, code, name, category, description, thumbnail_url, design_tokens")
         .eq("is_active", true)
         .order("code"),
-      supabase.from("users").select("points").eq("id", user!.id).single(),
+      supabase.from("users").select("points, tier").eq("id", user!.id).single(),
     ]);
 
   const points = profile?.points ?? 0;
+  const tier: "free" | "pro" = profile?.tier === "pro" ? "pro" : "free";
 
   return (
     <div className="p-8">
@@ -39,13 +40,19 @@ export default async function GeneratePage() {
       </div>
 
       <div className="mb-6 flex items-center justify-between rounded-lg bg-ivory p-4">
-        <div className="flex items-center gap-2 text-sm">
-          <Coins className="h-4 w-4 text-brand" />
-          <span>기본 요금: </span>
-          <strong className="text-brand">30 P / 페이지</strong>
-          <span className="text-muted-foreground">
-            &middot; 추가 언어 +20P
-          </span>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+          <div className="flex items-center gap-2">
+            <Coins className="h-4 w-4 text-brand" />
+            <span>기본 요금:</span>
+            <strong className="text-brand">30 P / 페이지</strong>
+          </div>
+          <span className="text-muted-foreground">&middot; 추가 언어 +20P</span>
+          <span className="text-muted-foreground">&middot; 고급 모드 +15P</span>
+          {tier === "pro" && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-white">
+              ★ Pro 회원 · 고급 모드 자동 무료
+            </span>
+          )}
         </div>
         <div className="text-sm">
           잔여 포인트:{" "}
@@ -77,6 +84,7 @@ export default async function GeneratePage() {
           products={products}
           templates={templates || []}
           points={points}
+          tier={tier}
         />
       )}
     </div>

@@ -43,6 +43,7 @@ interface Props {
   products: ProductLite[];
   templates: TemplateLite[];
   points: number;
+  tier?: "free" | "pro";
 }
 
 const LANGUAGES: Array<{ code: Language; label: string; flag: string; extraCost: number }> = [
@@ -52,13 +53,15 @@ const LANGUAGES: Array<{ code: Language; label: string; flag: string; extraCost:
   { code: "ja", label: "日本語", flag: "🇯🇵", extraCost: POINT_COSTS.ADD_LANGUAGE },
 ];
 
-export default function GenerateWizard({ products, templates, points }: Props) {
+export default function GenerateWizard({ products, templates, points, tier = "free" }: Props) {
   const router = useRouter();
+  const isProUser = tier === "pro";
   const [step, setStep] = useState(1);
   const [productId, setProductId] = useState<string | null>(null);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [language, setLanguage] = useState<Language>("ko");
   const [useProModel, setUseProModel] = useState(false);
+  const [premiumMode, setPremiumMode] = useState(false); // 고급 모드 (+15P)
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
@@ -67,7 +70,12 @@ export default function GenerateWizard({ products, templates, points }: Props) {
   const selectedTemplate = templates.find((t) => t.id === templateId);
   const selectedLang = LANGUAGES.find((l) => l.code === language)!;
 
-  const totalCost = POINT_COSTS.CREATE_PAGE + selectedLang.extraCost;
+  // 실제로 부과되는 프리미엄 요금 (Pro 회원은 무료)
+  const premiumSurcharge = premiumMode && !isProUser ? POINT_COSTS.PREMIUM_MODE_SURCHARGE : 0;
+  // Self-Critique 실제 적용 여부 (Pro는 항상 ON, 아니면 체크박스 여부)
+  const selfCritiqueOn = isProUser || premiumMode;
+
+  const totalCost = POINT_COSTS.CREATE_PAGE + selectedLang.extraCost + premiumSurcharge;
   const canAfford = points >= totalCost;
 
   function next() {
@@ -109,6 +117,7 @@ export default function GenerateWizard({ products, templates, points }: Props) {
             template_id: templateId,
             language,
             use_pro_model: useProModel,
+            premium_mode: premiumMode,
           }),
         });
 
@@ -311,6 +320,53 @@ export default function GenerateWizard({ products, templates, points }: Props) {
                 </div>
               </label>
             </div>
+
+            {/* 고급 모드 (Self-Critique) 선택 */}
+            <div className="mt-4 rounded-lg border-2 border-brand/20 bg-gradient-to-br from-brand/[0.03] to-transparent p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm font-medium text-ink">
+                  <Sparkles className="h-4 w-4 text-brand" />
+                  카피 품질 · 고급 모드 (Self-Critique)
+                </div>
+                {isProUser && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-white">
+                    ★ Pro 자동 적용
+                  </span>
+                )}
+              </div>
+              <label
+                className={
+                  "flex cursor-pointer items-start gap-3 rounded p-2 " +
+                  (isProUser ? "opacity-70" : "hover:bg-white")
+                }
+              >
+                <input
+                  type="checkbox"
+                  checked={selfCritiqueOn}
+                  disabled={isProUser}
+                  onChange={(e) => setPremiumMode(e.target.checked)}
+                  className="mt-1 h-4 w-4 accent-brand"
+                />
+                <div className="flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-medium text-ink">
+                      AI가 카피를 스스로 재검수 (2-Pass)
+                    </p>
+                    {!isProUser && (
+                      <span className="rounded bg-brand/10 px-1.5 py-0.5 text-[10px] font-bold text-brand">
+                        +15P
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    초고 → 자기 검수 → 최종본. 진부한 표현·과장·반복 어휘를 제거하고 후킹 문구를 강화합니다.
+                    {isProUser
+                      ? " Pro 회원은 항상 자동 적용됩니다."
+                      : " 프리미엄·럭셔리 상품에 특히 효과적입니다."}
+                  </p>
+                </div>
+              </label>
+            </div>
           </div>
         )}
 
@@ -332,6 +388,17 @@ export default function GenerateWizard({ products, templates, points }: Props) {
               <SummaryRow
                 label="이미지 품질"
                 value={useProModel ? "프로 (Nano Banana Pro)" : "표준 (Nano Banana)"}
+              />
+              <SummaryRow
+                label="카피 품질"
+                value={
+                  selfCritiqueOn
+                    ? isProUser
+                      ? "고급 (Self-Critique · Pro 자동)"
+                      : "고급 (Self-Critique · +15P)"
+                    : "표준 (1-Pass)"
+                }
+                highlight={selfCritiqueOn}
               />
               <div className="mt-3 border-t border-brand/10 pt-3">
                 <SummaryRow
@@ -474,10 +541,12 @@ function SummaryRow({
   label,
   value,
   emphasize,
+  highlight,
 }: {
   label: string;
   value: string;
   emphasize?: boolean;
+  highlight?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between text-sm">
@@ -486,7 +555,9 @@ function SummaryRow({
         className={
           emphasize
             ? "font-serif text-lg font-bold text-brand"
-            : "font-medium text-ink"
+            : highlight
+              ? "font-semibold text-brand"
+              : "font-medium text-ink"
         }
       >
         {value}

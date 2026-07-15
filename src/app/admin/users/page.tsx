@@ -4,13 +4,14 @@ import UserActions from "./user-actions";
 import { Search } from "lucide-react";
 
 interface PageProps {
-  searchParams: Promise<{ q?: string; role?: string }>;
+  searchParams: Promise<{ q?: string; role?: string; tier?: string }>;
 }
 
 export default async function AdminUsersPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const q = (params.q ?? "").trim();
   const roleFilter = params.role ?? "all";
+  const tierFilter = params.tier ?? "all";
 
   // 현재 로그인한 관리자 ID (본인 강등 방지용)
   const supabase = await createClient();
@@ -32,13 +33,17 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
   if (roleFilter === "admin" || roleFilter === "user") {
     query = query.eq("role", roleFilter);
   }
+  if (tierFilter === "pro" || tierFilter === "free") {
+    query = query.eq("tier", tierFilter);
+  }
 
   const { data: users } = await query;
 
   // 전체 통계
-  const [{ count: totalCount }, { count: adminCount }] = await Promise.all([
+  const [{ count: totalCount }, { count: adminCount }, { count: proCount }] = await Promise.all([
     admin.from("users").select("id", { count: "exact", head: true }),
     admin.from("users").select("id", { count: "exact", head: true }).eq("role", "admin"),
+    admin.from("users").select("id", { count: "exact", head: true }).eq("tier", "pro"),
   ]);
 
   return (
@@ -48,7 +53,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
           회원 관리
         </h1>
         <p className="text-slate-500">
-          전체 {totalCount ?? 0}명 · 관리자 {adminCount ?? 0}명
+          전체 {totalCount ?? 0}명 · 관리자 {adminCount ?? 0}명 · Pro 회원 {proCount ?? 0}명
           {q && ` · '${q}' 검색 결과`}
         </p>
       </div>
@@ -74,13 +79,22 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
           <option value="admin">관리자만</option>
           <option value="user">일반만</option>
         </select>
+        <select
+          name="tier"
+          defaultValue={tierFilter}
+          className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+        >
+          <option value="all">전체 등급</option>
+          <option value="pro">Pro만</option>
+          <option value="free">Free만</option>
+        </select>
         <button
           type="submit"
           className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand/90"
         >
           검색
         </button>
-        {(q || roleFilter !== "all") && (
+        {(q || roleFilter !== "all" || tierFilter !== "all") && (
           <a
             href="/admin/users"
             className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
@@ -102,6 +116,9 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
               </th>
               <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
                 권한
+              </th>
+              <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                등급
               </th>
               <th className="p-4 text-right text-xs font-bold uppercase tracking-wider text-slate-500">
                 포인트
@@ -133,6 +150,17 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
                     </span>
                   )}
                 </td>
+                <td className="p-4">
+                  {u.tier === "pro" ? (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
+                      ★ Pro
+                    </span>
+                  ) : (
+                    <span className="rounded-md bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-500">
+                      Free
+                    </span>
+                  )}
+                </td>
                 <td className="p-4 text-right font-serif font-bold">
                   {(u.points ?? 0).toLocaleString()}P
                 </td>
@@ -147,6 +175,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
                     userName={u.name}
                     currentPoints={u.points ?? 0}
                     currentRole={u.role === "admin" ? "admin" : "user"}
+                    currentTier={u.tier === "pro" ? "pro" : "free"}
                     isSelf={currentAdmin?.id === u.id}
                   />
                 </td>

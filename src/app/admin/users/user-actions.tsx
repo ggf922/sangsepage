@@ -6,7 +6,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Coins, ShieldCheck, ShieldOff, X } from "lucide-react";
+import { Coins, ShieldCheck, ShieldOff, X, Star, StarOff } from "lucide-react";
 
 interface UserActionsProps {
   userId: string;
@@ -14,6 +14,7 @@ interface UserActionsProps {
   userName: string | null;
   currentPoints: number;
   currentRole: "user" | "admin";
+  currentTier: "free" | "pro";
   isSelf: boolean; // 관리자 본인인지 (본인 admin 해제 불가)
 }
 
@@ -23,6 +24,7 @@ export default function UserActions({
   userName,
   currentPoints,
   currentRole,
+  currentTier,
   isSelf,
 }: UserActionsProps) {
   const router = useRouter();
@@ -84,6 +86,30 @@ export default function UserActions({
     });
   };
 
+  const handleTierToggle = async () => {
+    const newTier = currentTier === "pro" ? "free" : "pro";
+    if (!confirm(
+      newTier === "pro"
+        ? `${userEmail}을 Pro 회원으로 승격하시겠습니까?\n\n• Self-Critique 2-Pass가 항상 자동 적용됩니다\n• 재생성 특전은 모든 회원 공통입니다`
+        : `${userEmail}을 Free 회원으로 강등하시겠습니까?\n\n(고급 모드는 사용자가 +15P로 선택 사용 가능)`
+    )) {
+      return;
+    }
+    startTransition(async () => {
+      const res = await fetch(`/api/admin/users/${userId}/tier`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tier: newTier }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(`❌ ${data.error ?? "실패"}`);
+        return;
+      }
+      router.refresh();
+    });
+  };
+
   const parsedAmount = parseInt(amount, 10);
   const isValidAmount = !isNaN(parsedAmount) && parsedAmount > 0;
 
@@ -97,6 +123,26 @@ export default function UserActions({
           title="포인트 지급/차감"
         >
           <Coins className="inline h-3 w-3" /> 포인트
+        </button>
+        <button
+          onClick={handleTierToggle}
+          disabled={isPending}
+          className={`rounded-md px-2.5 py-1 text-xs font-medium disabled:opacity-50 ${
+            currentTier === "pro"
+              ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
+              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+          }`}
+          title={currentTier === "pro" ? "Pro 회원 강등" : "Pro 회원 승격"}
+        >
+          {currentTier === "pro" ? (
+            <>
+              <StarOff className="inline h-3 w-3" /> Pro해제
+            </>
+          ) : (
+            <>
+              <Star className="inline h-3 w-3" /> Pro승격
+            </>
+          )}
         </button>
         {!isSelf && (
           <button

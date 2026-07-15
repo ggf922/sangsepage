@@ -17,8 +17,11 @@ const openai = new OpenAI({
 const COPY_MODEL = process.env.COPY_MODEL || "gpt-4o";
 
 // Self-critique 2-pass: 카피 생성 후 자체 검수로 진부한 표현·과장·hallucination 제거
-// 활성화: COPY_SELF_CRITIQUE=true (Vercel 환경변수). 비용 2배, 품질 향상. 기본 OFF.
-const SELF_CRITIQUE_ENABLED = process.env.COPY_SELF_CRITIQUE === "true";
+// 우선순위:
+//   1) generateCopy() 호출 시 explicit 파라미터 (Pro 회원, 재생성, 고급모드 체크박스)
+//   2) 환경변수 COPY_SELF_CRITIQUE=true (전역 강제 ON)
+// 기본은 OFF. 비용 2배, 품질 향상.
+const SELF_CRITIQUE_GLOBAL = process.env.COPY_SELF_CRITIQUE === "true";
 
 export interface GeneratedCopy {
   hero: {
@@ -220,10 +223,16 @@ function pickCategoryGuide(product: Product, template: Template): CategoryGuide 
 // 카피 생성
 // ============================================================
 
+export interface GenerateCopyOptions {
+  /** Self-Critique 2-pass 강제 ON/OFF. undefined면 환경변수(COPY_SELF_CRITIQUE) 사용 */
+  selfCritique?: boolean;
+}
+
 export async function generateCopy(
   product: Product,
   template: Template,
-  language: Language = "ko"
+  language: Language = "ko",
+  options: GenerateCopyOptions = {}
 ): Promise<GeneratedCopy> {
   const toneHint = product.brand_tone
     ? TONE_HINTS[product.brand_tone] ?? product.brand_tone
@@ -349,8 +358,13 @@ ${productContext}
   }
 
   // === Self-critique 2-pass (선택적 활성화) ===
-  if (SELF_CRITIQUE_ENABLED) {
+  // 우선순위: options.selfCritique (명시적) > SELF_CRITIQUE_GLOBAL (환경변수)
+  const shouldSelfCritique =
+    options.selfCritique !== undefined ? options.selfCritique : SELF_CRITIQUE_GLOBAL;
+
+  if (shouldSelfCritique) {
     try {
+      console.log("[generateCopy] Self-Critique 2-pass 활성화");
       parsed = await selfCritiqueAndRefine(parsed, systemPrompt);
     } catch (e: any) {
       console.warn(`[generateCopy] self-critique 실패 (원본 카피 유지): ${e?.message ?? e}`);

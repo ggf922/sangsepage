@@ -3,6 +3,7 @@
 // ============================================================
 
 export type UserRole = "user" | "admin";
+export type UserTier = "free" | "pro";
 export type PageStatus = "draft" | "generating" | "completed" | "failed";
 export type Language = "ko" | "en" | "zh" | "ja";
 export type TransactionType = "charge" | "usage" | "refund" | "bonus" | "admin_adjust";
@@ -85,6 +86,7 @@ export interface UserProfile {
   email: string;
   name: string | null;
   role: UserRole;
+  tier: UserTier;
   points: number;
   total_generated: number;
   created_at: string;
@@ -141,6 +143,11 @@ export interface GeneratedPage {
   points_used: number;
   status: PageStatus;
   error_message: string | null;
+  // === Self-Critique / 재생성 추적 (0006 migration) ===
+  regeneration_count: number; // 0 = 최초 생성, 1+ = 재생성
+  source_page_id: string | null; // 재생성 시 원본 페이지 참조
+  self_critique_used: boolean; // 실제 Self-Critique 적용 여부
+  premium_requested: boolean; // 사용자가 고급 모드 체크박스 선택 여부
   created_at: string;
   updated_at: string;
 }
@@ -212,7 +219,14 @@ export const POINT_COSTS = {
   EDIT_PAGE: 10,
   ADD_LANGUAGE: 20,
   SIGNUP_BONUS: 100,
+  PREMIUM_MODE_SURCHARGE: 15, // Self-Critique 고급 모드 추가 요금 (Free 회원만 적용)
 } as const;
+
+// 회원 등급 메타
+export const USER_TIER_META: Record<UserTier, { label: string; badge: string; color: string }> = {
+  free: { label: "무료", badge: "Free", color: "#64748b" },
+  pro: { label: "프로", badge: "Pro", color: "#a71d1d" },
+};
 
 export const MAX_EDITS_DEFAULT = 3;
 

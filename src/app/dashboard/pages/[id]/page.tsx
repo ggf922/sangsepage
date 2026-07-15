@@ -40,20 +40,25 @@ export default async function PageDetailPage({ params }: PageProps) {
 
   if (!user) redirect("/auth/login");
 
-  const { data: page, error } = await supabase
-    .from("generated_pages")
-    .select(
+  const [{ data: page, error }, { data: profile }] = await Promise.all([
+    supabase
+      .from("generated_pages")
+      .select(
+        `
+        *,
+        product:products(id, name, category),
+        template:templates(id, code, name, category, design_tokens)
       `
-      *,
-      product:products(id, name, category),
-      template:templates(id, code, name, category, design_tokens)
-    `
-    )
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .single();
+      )
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .single(),
+    supabase.from("users").select("points").eq("id", user.id).single(),
+  ]);
 
   if (error || !page) notFound();
+
+  const userPoints = profile?.points ?? 0;
 
   const langMeta = LANG_META[page.language] ?? LANG_META.ko;
   const imageCount = Array.isArray(page.generated_images)
@@ -104,6 +109,11 @@ export default async function PageDetailPage({ params }: PageProps) {
               shareId={page.share_id}
               editCount={page.edit_count}
               maxEdits={page.max_edits}
+              productId={page.product_id}
+              templateId={page.template_id}
+              language={page.language}
+              points={userPoints}
+              regenerationCount={page.regeneration_count ?? 0}
             />
           )}
         </div>
@@ -153,6 +163,27 @@ export default async function PageDetailPage({ params }: PageProps) {
 
       {isCompleted && (
         <>
+          {/* 재생성/Self-Critique 배지 */}
+          {(page.self_critique_used || (page.regeneration_count ?? 0) > 0) && (
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              {page.self_critique_used && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold text-brand">
+                  ✨ Self-Critique 2-Pass 적용됨
+                </span>
+              )}
+              {(page.regeneration_count ?? 0) > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                  🔁 재생성 #{page.regeneration_count}
+                </span>
+              )}
+              {page.premium_requested && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-800">
+                  ⭐ 고급 모드 (+15P)
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Meta info */}
           <div className="mb-6 grid gap-4 md:grid-cols-4">
             <MetaCard
