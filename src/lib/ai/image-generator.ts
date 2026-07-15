@@ -9,10 +9,11 @@ import { generateShortId } from "@/lib/utils";
 
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
-// 무료 티어 (Nano Banana / Gemini 2.5 Flash Image)
+// 무료/표준 티어 (Nano Banana / Gemini 2.5 Flash Image - GA)
 const MODEL_FREE = "gemini-2.5-flash-image";
-// 유료 티어 (Nano Banana Pro / Gemini 3 Pro Image)
-const MODEL_PRO = "gemini-3-pro-image";
+// 유료 티어 (Nano Banana Pro / Gemini 3 Pro Image - Preview)
+// 주의: 정확한 모델명은 "-preview" 접미사 필수!
+const MODEL_PRO = "gemini-3-pro-image-preview";
 
 export type ImageRole =
   | "hero"
@@ -44,6 +45,15 @@ async function generateOneImage(
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY가 설정되지 않았습니다.");
 
+  // Gemini API 키 형식 검증 — "AIzaSy"로 시작하는 39자 키여야 함
+  // 그 외 형식(OAuth 토큰, 다른 Google 서비스 키 등)은 401 유발
+  if (!apiKey.startsWith("AIza")) {
+    throw new Error(
+      "GEMINI_API_KEY 형식이 잘못되었습니다. 'AIzaSy...'로 시작하는 Google AI Studio 키여야 합니다. " +
+      "https://aistudio.google.com/apikey 에서 발급받으세요."
+    );
+  }
+
   const model = useProModel ? MODEL_PRO : MODEL_FREE;
   const url = `${GEMINI_API_BASE}/models/${model}:generateContent?key=${apiKey}`;
 
@@ -68,7 +78,22 @@ async function generateOneImage(
   if (!response.ok) {
     const errorText = await response.text();
     console.error(`[Gemini image error ${response.status}]`, errorText);
-    throw new Error(`Gemini 이미지 생성 실패 (${response.status}): ${errorText.slice(0, 200)}`);
+
+    // 사용자 친화적 힌트
+    let hint = "";
+    if (response.status === 401 || response.status === 403) {
+      hint = " (API 키 문제 — Vercel 환경변수 GEMINI_API_KEY 확인 필요)";
+    } else if (response.status === 404) {
+      hint = ` (모델 '${model}' 을 찾을 수 없음 — 모델명 확인 필요)`;
+    } else if (response.status === 429) {
+      hint = " (요청 한도 초과 — 잠시 후 다시 시도하세요)";
+    } else if (response.status === 400) {
+      hint = " (프롬프트 형식 오류 또는 지원하지 않는 요청)";
+    }
+
+    throw new Error(
+      `Gemini 이미지 생성 실패 (${response.status})${hint}: ${errorText.slice(0, 200)}`
+    );
   }
 
   const data = await response.json();
