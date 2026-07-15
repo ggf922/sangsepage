@@ -241,14 +241,43 @@ npm run build
 pm2 start ecosystem.config.cjs
 ```
 
-### 환경변수 (`.env.local`)
+### 환경변수 (`.env.local` / Vercel)
+
+**필수 (Required):**
 ```
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
-OPENAI_API_KEY=...
-GEMINI_API_KEY=...
+OPENAI_API_KEY=sk-...
+GEMINI_API_KEY=AQ.Ab...   # 새 Auth key 형식 (2026+ AI Studio 기본)
+NEXT_PUBLIC_SITE_URL=https://88km.shop
 ```
+
+**선택 (Optional — 카피 품질 튜닝):**
+```
+COPY_MODEL=gpt-4o                  # 기본. gpt-4o-mini로 원복 가능 (비용 1/15)
+COPY_SELF_CRITIQUE=true            # 카피 2-pass 자체 검수 활성화 (비용 2배, 품질↑)
+```
+
+## 🎨 카피/이미지 품질 개선 이력 (2026-07)
+
+### 카피 개선 (v2)
+- **모델 업그레이드**: gpt-4o-mini → gpt-4o (감성·문학적 표현 15배 상승)
+- **카테고리별 프롬프트 분기**: 김치/화장품/전자/건강/생활용품 5종 각각 강조점·예시·금지 표현 분리
+- **Few-shot 예시**: 오가미·설화수·Dyson·뉴트리원·무인양품 톤 실제 예시 주입
+- **maker_story 필드**: 만든 사람·브랜드 스토리 자동 생성 (인용 + 화자 표기)
+- **Self-critique 2-pass** (선택): 진부 표현·과장·hallucination 자동 제거
+
+### 이미지 개선 (v2)
+- **사진작가 브리프 스타일 프롬프트**: 9필드 상세 지정
+  - CAMERA / LIGHTING / COMPOSITION / MOOD / COLORS / PROPS / POST / ASPECT / STYLE REF
+- **유저 사진 참조**: 업로드한 상품 사진을 Gemini `inlineData`로 첨부 → 실제 상품과 훨씬 닮은 결과
+- **이미지 슬롯 6개 → 9개**: hero, detail_1/2, detail_close (매크로), ingredient, process_shot (제조 과정), comparison (비교/스케일), lifestyle, signature
+
+### 템플릿 개선 (v2 — 5개 템플릿 공통)
+- **신뢰 배지 섹션**: extra_info.certifications + awards 자동 뱃지화
+- **만든 사람 스토리 섹션**: maker_story 카피 + process_shot 이미지 + 인용 blockquote
+- **매크로/비교 이미지**: 신규 role 3개를 각 템플릿에 적절히 배치
 
 ## 📊 커밋 히스토리 (주요)
 
