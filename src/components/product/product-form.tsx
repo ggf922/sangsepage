@@ -48,6 +48,7 @@ export default function ProductForm({ mode, initialData }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const [form, setForm] = useState<ProductFormData>({
@@ -70,6 +71,7 @@ export default function ProductForm({ mode, initialData }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMessage(null);
 
     if (!form.name.trim()) {
       setError("상품명은 필수입니다.");
@@ -92,12 +94,16 @@ export default function ProductForm({ mode, initialData }: Props) {
         if (mode === "create") {
           router.push(`/dashboard/products/${result.data.id}/edit?created=1`);
         } else {
-          router.refresh();
-          window.scrollTo({ top: 0, behavior: "smooth" });
+          // ✅ 저장 성공 - 사용자에게 명확히 피드백
+          setSuccessMessage("변경사항이 저장되었습니다");
           setError(null);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          router.refresh();
+          // 3초 후 성공 메시지 자동 사라짐
+          setTimeout(() => setSuccessMessage(null), 3000);
         }
       } else {
-        setError(result.error);
+        setError(result.error || "저장 중 오류가 발생했습니다. 다시 시도해 주세요.");
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     });
@@ -153,6 +159,13 @@ export default function ProductForm({ mode, initialData }: Props) {
         <div className="mb-4 flex items-center gap-2 rounded-lg bg-destructive/10 p-4 text-sm text-destructive">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{error}</span>
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800 animate-in fade-in slide-in-from-top-2">
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" />
+          <span className="font-medium">{successMessage}</span>
         </div>
       )}
 
@@ -265,7 +278,12 @@ export default function ProductForm({ mode, initialData }: Props) {
         {/* 저장 버튼 */}
         <div className="sticky bottom-4 z-10 flex items-center justify-between rounded-xl border border-brand/10 bg-white p-4 shadow-lg">
           <div className="flex items-center gap-3 text-sm">
-            {totalCompleteness >= 60 ? (
+            {successMessage ? (
+              <>
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <span className="font-medium text-green-800">{successMessage}</span>
+              </>
+            ) : totalCompleteness >= 60 ? (
               <>
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
                 <span className="text-ink">
