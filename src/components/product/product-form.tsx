@@ -83,6 +83,13 @@ export default function ProductForm({ mode, initialData }: Props) {
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
+    // GIF만 업로드하고 정지 이미지가 하나도 없으면 경고
+    const staticImages = form.images.filter((img) => img.role !== "gif" && img.mime_type !== "image/gif");
+    if (staticImages.length === 0) {
+      setError("일반 이미지(JPG/PNG)를 최소 1장 업로드해주세요. GIF 외에 대표 이미지가 필요합니다.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
 
     startTransition(async () => {
       const result =

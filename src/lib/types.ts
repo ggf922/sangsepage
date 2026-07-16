@@ -23,13 +23,26 @@ export interface ProductImage {
   id: string;
   url: string;
   path: string; // Storage 내부 경로 (삭제용)
-  role: "main" | "detail" | "lifestyle" | "ingredient" | "other";
+  role: "main" | "detail" | "lifestyle" | "ingredient" | "gif" | "other";
   order: number;
   width?: number;
   height?: number;
   size?: number; // bytes
   name?: string; // 원본 파일명
+  mime_type?: string; // MIME 타입 (GIF 여부 판별용)
+  gif_position?: GifPosition; // GIF일 때만 유효: 상세페이지 내 삽입 위치
+  gif_caption?: string; // GIF 하단에 표시할 캡션 (선택)
 }
+
+// GIF 삽입 위치 (김치·식품 상세페이지 표준 슬롯)
+export type GifPosition =
+  | "after_hero" // 히어로 직후 (첫인상)
+  | "after_intro" // 인트로 직후 (스토리 몰입)
+  | "after_points" // 핵심 셀링포인트 직후 ⭐ 소비자 선호 1위
+  | "after_detail" // 상세컷 직후 (질감·디테일)
+  | "after_process" // 제조 과정 직후 (동작·움직임)
+  | "after_lifestyle" // 라이프스타일 직후 (사용 장면)
+  | "before_signature"; // 시그니처 직전 (마무리 감성)
 
 // 원재료
 export interface Ingredient {
@@ -248,5 +261,16 @@ export const IMAGE_ROLE_META: Record<ProductImage["role"], { label: string; desc
   detail: { label: "상세", description: "상세 컷 (본문)" },
   lifestyle: { label: "연출", description: "라이프스타일 컷" },
   ingredient: { label: "원재료", description: "원재료·성분 컷" },
+  gif: { label: "GIF", description: "움직이는 GIF (상세페이지 삽입용)" },
   other: { label: "기타", description: "기타 이미지" },
+};
+
+export const GIF_POSITION_META: Record<GifPosition, { label: string; description: string; order: number }> = {
+  after_hero: { label: "히어로 직후", description: "메인 이미지 바로 아래 · 첫인상 강화", order: 1 },
+  after_intro: { label: "인트로 직후", description: "브랜드 스토리 다음 · 몰입감 강화", order: 2 },
+  after_points: { label: "핵심 포인트 직후", description: "⭐ 셀링포인트 다음 · 소비자 선호 1위", order: 3 },
+  after_detail: { label: "상세컷 직후", description: "상세 이미지 다음 · 질감·디테일", order: 4 },
+  after_process: { label: "제조 과정 직후", description: "공정 스텝 다음 · 동작·움직임", order: 5 },
+  after_lifestyle: { label: "라이프스타일 직후", description: "사용 장면 다음", order: 6 },
+  before_signature: { label: "시그니처 직전", description: "마무리 섹션 앞 · 감성적 여운", order: 7 },
 };

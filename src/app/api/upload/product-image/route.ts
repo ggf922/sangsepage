@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
-    const role = (formData.get("role") as string) || "detail";
+    let role = (formData.get("role") as string) || "detail";
 
     if (!file) {
       return NextResponse.json({ error: "파일이 없습니다." }, { status: 400 });
@@ -34,6 +34,12 @@ export async function POST(request: NextRequest) {
         { error: "파일 크기는 10MB 이하여야 합니다." },
         { status: 400 }
       );
+    }
+
+    // GIF 파일이면 자동으로 role="gif"로 설정 (사용자가 명시적으로 다른 role을 지정하지 않은 경우)
+    const isGif = file.type === "image/gif";
+    if (isGif && role !== "gif") {
+      role = "gif";
     }
 
     const ext = file.name.split(".").pop() || "jpg";
@@ -68,6 +74,9 @@ export async function POST(request: NextRequest) {
         order: 0,
         size: file.size,
         name: file.name,
+        mime_type: file.type,
+        // GIF는 기본 삽입 위치를 'after_points' (소비자 선호도 1위 위치)로 설정
+        ...(isGif ? { gif_position: "after_points" } : {}),
       },
     });
   } catch (err) {

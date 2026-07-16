@@ -5,7 +5,7 @@
 
 import type { GeneratedCopy } from "./copy-generator";
 import type { GeneratedImageResult } from "./image-generator";
-import type { Product, Template, SaleChannel } from "@/lib/types";
+import type { Product, Template, SaleChannel, ProductImage, GifPosition } from "@/lib/types";
 import { SALE_CHANNEL_META } from "@/lib/types";
 
 export interface RenderInput {
@@ -55,6 +55,81 @@ function findImage(images: GeneratedImageResult[], role: string): string {
 function findUserImage(product: Product, role: string): string {
   const imgs = (product.images ?? []) as any[];
   return imgs.find((i) => i.role === role)?.url ?? "";
+}
+
+// ============================================================
+// GIF 렌더링 (상품 이미지에서 role='gif'인 것들을 특정 위치에 삽입)
+// ============================================================
+
+/**
+ * 상품에서 특정 위치에 배치된 GIF들을 추출
+ * (mime_type이 image/gif인 경우도 포함하여 하위 호환성 확보)
+ */
+function getGifsAtPosition(product: Product, position: GifPosition): ProductImage[] {
+  const imgs = (product.images ?? []) as ProductImage[];
+  return imgs
+    .filter((img) => {
+      const isGif = img.role === "gif" || img.mime_type === "image/gif";
+      if (!isGif) return false;
+      // 위치 지정이 없는 GIF는 기본 위치인 'after_points'에 표시
+      const pos = img.gif_position ?? "after_points";
+      return pos === position;
+    })
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+}
+
+/**
+ * 특정 위치의 GIF들을 HTML로 렌더링
+ * - 배경색과 텍스트 색을 템플릿 팔레트에 맞춰 조정 가능
+ * - GIF가 없으면 빈 문자열 반환 (렌더러에서 자연스럽게 스킵됨)
+ */
+function renderGifsAt(
+  product: Product,
+  position: GifPosition,
+  opts: {
+    bg?: string;
+    text?: string;
+    accent?: string;
+    serifClass?: string;
+    padded?: boolean; // true면 좌우 60px 여백, false면 전폭
+  } = {}
+): string {
+  const gifs = getGifsAtPosition(product, position);
+  if (gifs.length === 0) return "";
+
+  const bg = opts.bg ?? "#faf5ea";
+  const text = opts.text ?? "#2b1f18";
+  const accent = opts.accent ?? "#a71d1d";
+  const serifClass = opts.serifClass ?? "";
+  const padded = opts.padded ?? true;
+
+  return `
+  <!-- GIF Slot: ${position} -->
+  <section style="background:${bg};${padded ? "padding:48px 60px;" : "padding:0;"}text-align:center;">
+    ${gifs
+      .map((gif, idx) => {
+        const isLast = idx === gifs.length - 1;
+        return `
+      <figure style="margin:0;${!isLast ? "margin-bottom:32px;" : ""}">
+        <img
+          src="${esc(gif.url)}"
+          alt="${esc(gif.gif_caption || product.name)}"
+          style="width:100%;${padded ? "max-width:740px;" : ""}margin:0 auto;border-radius:${padded ? "12px" : "0"};box-shadow:${padded ? "0 12px 40px rgba(0,0,0,0.08)" : "none"};display:block;"
+          loading="lazy"
+        >
+        ${
+          gif.gif_caption
+            ? `<figcaption class="${serifClass}" style="margin-top:16px;font-size:14px;color:${text};opacity:0.7;font-style:italic;letter-spacing:0.5px;">
+             <span style="display:inline-block;width:24px;height:1px;background:${accent};vertical-align:middle;margin-right:8px;opacity:0.6;"></span>
+             ${esc(gif.gif_caption)}
+             <span style="display:inline-block;width:24px;height:1px;background:${accent};vertical-align:middle;margin-left:8px;opacity:0.6;"></span>
+           </figcaption>`
+            : ""
+        }
+      </figure>`;
+      })
+      .join("")}
+  </section>`;
 }
 
 function renderChannelBadges(channels: SaleChannel[]): string {
@@ -267,12 +342,18 @@ function renderKimchiOgami(input: RenderInput): string {
     ${heroImg ? `<img src="${heroImg}" alt="${esc(product.name)}" style="width:100%;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,0.1);">` : ""}
   </section>
 
+  <!-- GIF: after_hero -->
+  ${renderGifsAt(product, "after_hero", { bg, text, accent: primary, serifClass: "serif" })}
+
   <!-- 2. Intro -->
   <section class="section" style="background:${bgLight};text-align:center;">
     <h2 class="serif" style="font-size:32px;font-weight:700;color:${primary};margin-bottom:12px;">${esc(copy.intro.heading)}</h2>
     <div class="divider"></div>
     <p style="font-size:16px;color:${text};max-width:640px;margin:0 auto;line-height:2;">${esc(copy.intro.body)}</p>
   </section>
+
+  <!-- GIF: after_intro -->
+  ${renderGifsAt(product, "after_intro", { bg: bgLight, text, accent: primary, serifClass: "serif" })}
 
   <!-- 3. Spec Summary -->
   <section class="section" style="background:${bg};">
@@ -293,6 +374,9 @@ function renderKimchiOgami(input: RenderInput): string {
   </section>
   ` : ""}
 
+  <!-- GIF: after_points ⭐ 소비자 선호 1위 위치 -->
+  ${renderGifsAt(product, "after_points", { bg, text, accent: primary, serifClass: "serif" })}
+
   <!-- 4b. Trust Badges (인증·수상) -->
   ${trustBadges}
 
@@ -302,6 +386,9 @@ function renderKimchiOgami(input: RenderInput): string {
     <img src="${detail1}" alt="상세컷 1" style="width:100%;">
   </section>
   ` : ""}
+
+  <!-- GIF: after_detail -->
+  ${renderGifsAt(product, "after_detail", { bg, text, accent: primary, serifClass: "serif" })}
 
   <!-- 5b. Close-up Macro (질감·디테일) -->
   ${detailCloseImg ? `
@@ -359,6 +446,9 @@ function renderKimchiOgami(input: RenderInput): string {
   </section>
   ` : ""}
 
+  <!-- GIF: after_process -->
+  ${renderGifsAt(product, "after_process", { bg, text, accent: primary, serifClass: "serif" })}
+
   <!-- 8b. Maker Story (만든 사람들) -->
   ${makerStory}
 
@@ -377,6 +467,12 @@ function renderKimchiOgami(input: RenderInput): string {
     <img src="${lifestyleImg}" alt="라이프스타일" style="width:100%;">
   </section>
   ` : ""}
+
+  <!-- GIF: after_lifestyle -->
+  ${renderGifsAt(product, "after_lifestyle", { bg, text, accent: primary, serifClass: "serif" })}
+
+  <!-- GIF: before_signature -->
+  ${renderGifsAt(product, "before_signature", { bg: bgLight, text, accent: primary, serifClass: "serif" })}
 
   <!-- 10. Signature -->
   <section class="section" style="background:${bgLight};text-align:center;">
@@ -453,10 +549,16 @@ function renderHouseholdModern(input: RenderInput): string {
 
   ${heroImg ? `<img src="${heroImg}" alt="${esc(product.name)}" style="width:100%;">` : ""}
 
+  <!-- GIF: after_hero -->
+  ${renderGifsAt(product, "after_hero", { bg: bgLight, text, accent: primary })}
+
   <section class="section" style="background:${bg};text-align:center;">
     <h2 style="font-size:28px;font-weight:400;color:${text};margin-bottom:32px;">${esc(copy.intro.heading)}</h2>
     <p style="font-size:16px;color:#555;max-width:560px;margin:0 auto;line-height:2;font-weight:300;">${esc(copy.intro.body)}</p>
   </section>
+
+  <!-- GIF: after_intro -->
+  ${renderGifsAt(product, "after_intro", { bg, text, accent: primary })}
 
   ${copy.points.length ? `
   <section class="section" style="background:${bgLight};">
@@ -472,7 +574,13 @@ function renderHouseholdModern(input: RenderInput): string {
   </section>
   ` : ""}
 
+  <!-- GIF: after_points -->
+  ${renderGifsAt(product, "after_points", { bg: bgLight, text, accent: primary })}
+
   ${detail1 ? `<img src="${detail1}" alt="상세" style="width:100%;">` : ""}
+
+  <!-- GIF: after_detail -->
+  ${renderGifsAt(product, "after_detail", { bg, text, accent: primary })}
 
   <section class="section" style="background:${bg};">
     <h2 style="font-size:24px;font-weight:400;color:${text};margin-bottom:32px;text-align:center;">${esc(copy.spec_summary.heading)}</h2>
@@ -493,6 +601,12 @@ function renderHouseholdModern(input: RenderInput): string {
   ${comparisonImg ? `<img src="${comparisonImg}" alt="comparison" style="width:100%;">` : ""}
 
   ${lifestyleImg ? `<img src="${lifestyleImg}" alt="lifestyle" style="width:100%;">` : ""}
+
+  <!-- GIF: after_lifestyle -->
+  ${renderGifsAt(product, "after_lifestyle", { bg, text, accent: primary })}
+
+  <!-- GIF: before_signature -->
+  ${renderGifsAt(product, "before_signature", { bg: bgLight, text, accent: primary })}
 
   <section class="section" style="background:${primary};color:#fff;text-align:center;">
     <h2 style="font-size:32px;font-weight:300;margin-bottom:20px;">${esc(copy.signature.heading)}</h2>
@@ -564,10 +678,16 @@ function renderElectronicsTech(input: RenderInput): string {
 
   ${heroImg ? `<img src="${heroImg}" alt="${esc(product.name)}" style="width:100%;">` : ""}
 
+  <!-- GIF: after_hero -->
+  ${renderGifsAt(product, "after_hero", { bg, text: "#e5e5e5", accent: primary })}
+
   <section class="section" style="background:${bgLight};text-align:center;">
     <h2 style="font-size:36px;font-weight:700;color:${primary};margin-bottom:24px;">${esc(copy.intro.heading)}</h2>
     <p style="font-size:16px;color:#a3a3a3;max-width:640px;margin:0 auto;line-height:2;">${esc(copy.intro.body)}</p>
   </section>
+
+  <!-- GIF: after_intro -->
+  ${renderGifsAt(product, "after_intro", { bg: bgLight, text: "#e5e5e5", accent: primary })}
 
   <section class="section" style="background:${bg};">
     <h2 style="font-size:32px;font-weight:700;color:#fff;text-align:center;margin-bottom:40px;">SPECIFICATIONS</h2>
@@ -582,6 +702,9 @@ function renderElectronicsTech(input: RenderInput): string {
   </section>
 
   ${detail1 ? `<img src="${detail1}" alt="detail" style="width:100%;">` : ""}
+
+  <!-- GIF: after_detail -->
+  ${renderGifsAt(product, "after_detail", { bg, text: "#e5e5e5", accent: primary })}
 
   ${copy.points.length ? `
   <section class="section" style="background:${bgLight};">
@@ -598,6 +721,9 @@ function renderElectronicsTech(input: RenderInput): string {
   </section>
   ` : ""}
 
+  <!-- GIF: after_points -->
+  ${renderGifsAt(product, "after_points", { bg: bgLight, text: "#e5e5e5", accent: primary })}
+
   ${detail2 ? `<img src="${detail2}" alt="detail 2" style="width:100%;">` : ""}
   ${detailCloseImg ? `<img src="${detailCloseImg}" alt="close-up" style="width:100%;">` : ""}
 
@@ -608,6 +734,12 @@ function renderElectronicsTech(input: RenderInput): string {
   ${makerStory}
 
   ${lifestyleImg ? `<img src="${lifestyleImg}" alt="lifestyle" style="width:100%;">` : ""}
+
+  <!-- GIF: after_lifestyle -->
+  ${renderGifsAt(product, "after_lifestyle", { bg, text: "#e5e5e5", accent: primary })}
+
+  <!-- GIF: before_signature -->
+  ${renderGifsAt(product, "before_signature", { bg: bgLight, text: "#e5e5e5", accent: primary })}
 
   <section class="section" style="background:${primary};color:${bg};text-align:center;">
     <h2 style="font-size:40px;font-weight:900;margin-bottom:20px;letter-spacing:-1px;">${esc(copy.signature.heading)}</h2>
@@ -674,10 +806,16 @@ function renderHealthNatural(input: RenderInput): string {
 
   ${heroImg ? `<img src="${heroImg}" alt="${esc(product.name)}" style="width:100%;">` : ""}
 
+  <!-- GIF: after_hero -->
+  ${renderGifsAt(product, "after_hero", { bg, text, accent: primary, serifClass: "serif" })}
+
   <section class="section" style="background:${bg};text-align:center;">
     <h2 class="serif" style="font-size:30px;font-weight:700;color:${primary};margin-bottom:24px;">${esc(copy.intro.heading)}</h2>
     <p style="font-size:16px;color:${text};max-width:600px;margin:0 auto;line-height:2;">${esc(copy.intro.body)}</p>
   </section>
+
+  <!-- GIF: after_intro -->
+  ${renderGifsAt(product, "after_intro", { bg, text, accent: primary, serifClass: "serif" })}
 
   ${copy.points.length ? `
   <section class="section" style="background:${bgLight};">
@@ -693,6 +831,9 @@ function renderHealthNatural(input: RenderInput): string {
     </div>
   </section>
   ` : ""}
+
+  <!-- GIF: after_points -->
+  ${renderGifsAt(product, "after_points", { bg: bgLight, text, accent: primary, serifClass: "serif" })}
 
   ${ingredientImg && product.ingredients?.length ? `
   <section class="section" style="background:${bg};">
@@ -720,6 +861,9 @@ function renderHealthNatural(input: RenderInput): string {
 
   ${detailCloseImg ? `<img src="${detailCloseImg}" alt="close-up" style="width:100%;">` : ""}
 
+  <!-- GIF: after_detail -->
+  ${renderGifsAt(product, "after_detail", { bg, text, accent: primary, serifClass: "serif" })}
+
   ${trustBadges}
 
   ${makerStory}
@@ -727,6 +871,12 @@ function renderHealthNatural(input: RenderInput): string {
   ${comparisonImg ? `<img src="${comparisonImg}" alt="comparison" style="width:100%;">` : ""}
 
   ${lifestyleImg ? `<img src="${lifestyleImg}" alt="lifestyle" style="width:100%;">` : ""}
+
+  <!-- GIF: after_lifestyle -->
+  ${renderGifsAt(product, "after_lifestyle", { bg, text, accent: primary, serifClass: "serif" })}
+
+  <!-- GIF: before_signature -->
+  ${renderGifsAt(product, "before_signature", { bg: bgLight, text, accent: primary, serifClass: "serif" })}
 
   <section class="section" style="background:${primary};color:#fff;text-align:center;">
     <h2 class="serif" style="font-size:32px;font-weight:700;margin-bottom:20px;">${esc(copy.signature.heading)}</h2>
@@ -797,13 +947,22 @@ function renderCosmeticsLuxury(input: RenderInput): string {
 
   ${heroImg ? `<img src="${heroImg}" alt="${esc(product.name)}" style="width:100%;">` : ""}
 
+  <!-- GIF: after_hero -->
+  ${renderGifsAt(product, "after_hero", { bg, text, accent, serifClass: "serif" })}
+
   <section class="section" style="background:${bg};text-align:center;">
     <h2 class="serif" style="font-size:32px;font-weight:400;color:${primary};margin-bottom:8px;font-style:italic;">${esc(copy.intro.heading)}</h2>
     <div class="divider"></div>
     <p style="font-size:15px;color:${text};max-width:560px;margin:24px auto 0;line-height:2.2;">${esc(copy.intro.body)}</p>
   </section>
 
+  <!-- GIF: after_intro -->
+  ${renderGifsAt(product, "after_intro", { bg, text, accent, serifClass: "serif" })}
+
   ${detail1 ? `<img src="${detail1}" alt="detail" style="width:100%;">` : ""}
+
+  <!-- GIF: after_detail -->
+  ${renderGifsAt(product, "after_detail", { bg, text, accent, serifClass: "serif" })}
 
   ${copy.points.length ? `
   <section class="section" style="background:${bgLight};">
@@ -820,6 +979,9 @@ function renderCosmeticsLuxury(input: RenderInput): string {
     </div>
   </section>
   ` : ""}
+
+  <!-- GIF: after_points -->
+  ${renderGifsAt(product, "after_points", { bg: bgLight, text, accent, serifClass: "serif" })}
 
   ${ingredientImg && product.ingredients?.length ? `
   <section class="section" style="background:${bg};">
@@ -857,6 +1019,12 @@ function renderCosmeticsLuxury(input: RenderInput): string {
   ${comparisonImg ? `<img src="${comparisonImg}" alt="comparison" style="width:100%;">` : ""}
 
   ${lifestyleImg ? `<img src="${lifestyleImg}" alt="lifestyle" style="width:100%;">` : ""}
+
+  <!-- GIF: after_lifestyle -->
+  ${renderGifsAt(product, "after_lifestyle", { bg, text, accent, serifClass: "serif" })}
+
+  <!-- GIF: before_signature -->
+  ${renderGifsAt(product, "before_signature", { bg: bgLight, text, accent, serifClass: "serif" })}
 
   <section class="section" style="background:${accent};color:${bgLight};text-align:center;">
     <h2 class="serif" style="font-size:34px;font-weight:400;margin-bottom:16px;font-style:italic;">${esc(copy.signature.heading)}</h2>

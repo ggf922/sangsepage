@@ -84,6 +84,12 @@ function pickUserReferenceImages(product: Product, role: ImageRole): ProductImag
   const imgs = (product.images ?? []) as ProductImage[];
   if (imgs.length === 0) return [];
 
+  // GIF는 AI 참조 이미지로 사용하지 않음 (Gemini가 첫 프레임만 처리하고, 상세페이지 삽입 전용이므로)
+  const staticImgs = imgs.filter(
+    (i) => i.role !== "gif" && i.mime_type !== "image/gif"
+  );
+  if (staticImgs.length === 0) return [];
+
   const roleToProductRole: Record<ImageRole, Array<ProductImage["role"]>> = {
     hero: ["main", "lifestyle", "detail"],
     detail_1: ["detail", "main"],
@@ -101,7 +107,7 @@ function pickUserReferenceImages(product: Product, role: ImageRole): ProductImag
   const seen = new Set<string>();
 
   for (const wantRole of wanted) {
-    const found = imgs
+    const found = staticImgs
       .filter((i) => i.role === wantRole)
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     for (const im of found) {
