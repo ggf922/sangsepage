@@ -123,7 +123,36 @@ export default function GenerateWizard({ products, templates, points, tier = "fr
 
         clearTimeout(progressTimer);
 
-        const data = await res.json();
+        // 응답을 먼저 텍스트로 받아서 JSON 파싱 안전하게 처리
+        const responseText = await res.text();
+        console.log("[generate] Response status:", res.status);
+        console.log("[generate] Response body (first 500 chars):", responseText.slice(0, 500));
+
+        let data: any;
+        try {
+          data = JSON.parse(responseText);
+        } catch (parseErr) {
+          // JSON이 아닌 응답 (Vercel 타임아웃, 에러 페이지 등)
+          console.error("[generate] Non-JSON response:", responseText);
+
+          // 특정 케이스별 사용자 친화 메시지
+          let userMessage = "";
+          if (res.status === 504 || responseText.includes("timeout") || responseText.includes("FUNCTION_INVOCATION_TIMEOUT")) {
+            userMessage = "생성 시간이 초과되었습니다 (60초). 이미지 개수를 줄이거나 잠시 후 다시 시도해 주세요. 포인트는 자동 환불됩니다.";
+          } else if (res.status === 413 || responseText.includes("PAYLOAD_TOO_LARGE")) {
+            userMessage = "응답 크기가 너무 큽니다. 관리자에게 문의해 주세요.";
+          } else if (res.status === 500 && responseText.includes("FUNCTION_INVOCATION_FAILED")) {
+            userMessage = "서버 함수 실행에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+          } else if (res.status >= 500) {
+            userMessage = `서버 오류가 발생했습니다 (${res.status}). 잠시 후 다시 시도해 주세요.`;
+          } else {
+            userMessage = `예상치 못한 응답 (${res.status}): ${responseText.slice(0, 150)}`;
+          }
+
+          setError(userMessage);
+          setProgress(null);
+          return;
+        }
 
         if (!res.ok || !data.success) {
           setError(data.error ?? "생성에 실패했습니다.");
@@ -135,6 +164,7 @@ export default function GenerateWizard({ products, templates, points, tier = "fr
         // 결과 페이지로 이동
         router.push(`/dashboard/pages/${data.page_id}`);
       } catch (err: any) {
+        console.error("[generate] Network error:", err);
         setError(err?.message ?? "네트워크 오류가 발생했습니다.");
         setProgress(null);
       }
