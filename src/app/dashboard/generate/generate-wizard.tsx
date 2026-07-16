@@ -155,7 +155,18 @@ export default function GenerateWizard({ products, templates, points, tier = "fr
         }
 
         if (!res.ok || !data.success) {
-          setError(data.error ?? "생성에 실패했습니다.");
+          // 서버가 명시적으로 환불 결과를 알려주는 경우 UI에 표시
+          let errorMsg = data.error ?? "생성에 실패했습니다.";
+          if (data.refunded === true) {
+            errorMsg += `\n\n✅ ${totalCost}P가 자동 환불되었습니다. (현재 잔액: ${data.balance_after}P)`;
+            // 페이지 상단의 포인트 표시 새로고침을 위해 router.refresh 시도
+            try {
+              router.refresh();
+            } catch {}
+          } else if (data.refunded === false) {
+            errorMsg += `\n\n⚠️ 자동 환불에 실패했습니다. 관리자에게 문의해 주세요. (오류: ${data.refund_error ?? "알 수 없음"})`;
+          }
+          setError(errorMsg);
           setProgress(null);
           return;
         }
@@ -455,7 +466,7 @@ export default function GenerateWizard({ products, templates, points, tier = "fr
             {error && (
               <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                 <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                <div>{error}</div>
+                <div className="whitespace-pre-line">{error}</div>
               </div>
             )}
 

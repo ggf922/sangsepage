@@ -120,29 +120,18 @@ function pickUserReferenceImages(product: Product, role: ImageRole): ProductImag
 // 단일 이미지 생성
 // ============================================================
 
-async function generateOneImage(
+/**
+ * Gemini API를 실제로 호출하는 저수준 함수 (재시도/fallback 없음)
+ * 재시도 가능한 에러(503/429/5xx)는 특별한 프로퍼티를 심어서 던짐
+ */
+async function callGeminiOnce(
   prompt: string,
-  role: ImageRole,
-  user_id: string,
-  page_id: string,
-  useProModel = false,
-  referenceImages: ReferenceImage[] = []
-): Promise<GeneratedImageResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY가 설정되지 않았습니다.");
-
-  const isAuthKey = apiKey.startsWith("AQ.");
-  const isStandardKey = apiKey.startsWith("AIza");
-  if (!isAuthKey && !isStandardKey) {
-    console.warn(
-      `[Gemini] Unrecognized API key prefix. Expected 'AQ.' (auth) or 'AIza' (standard).`
-    );
-  }
-
-  const model = useProModel ? MODEL_PRO : MODEL_FREE;
+  model: string,
+  apiKey: string,
+  referenceImages: ReferenceImage[]
+): Promise<{ base64: string; mimeType: string }> {
   const url = `${GEMINI_API_BASE}/models/${model}:generateContent`;
 
-  // 참조 이미지가 있으면 프롬프트 파트에 함께 첨부
   const parts: any[] = [];
   for (const ref of referenceImages) {
     parts.push({
@@ -172,22 +161,29 @@ async function generateOneImage(
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`[Gemini image error ${response.status}]`, errorText);
+    const status = response.status;
+    console.error(`[Gemini image error ${status}] model=${model}`, errorText.slice(0, 300));
 
     let hint = "";
-    if (response.status === 401 || response.status === 403) {
+    if (status === 401 || status === 403) {
       hint = " (API 키 문제 — Vercel 환경변수 GEMINI_API_KEY 확인 필요)";
-    } else if (response.status === 404) {
+    } else if (status === 404) {
       hint = ` (모델 '${model}' 을 찾을 수 없음 — 모델명 확인 필요)`;
-    } else if (response.status === 429) {
+    } else if (status === 429) {
       hint = " (요청 한도 초과 — 잠시 후 다시 시도하세요)";
-    } else if (response.status === 400) {
+    } else if (status === 400) {
       hint = " (프롬프트 형식 오류 또는 지원하지 않는 요청)";
+    } else if (status === 503) {
+      hint = " (Google 서버 과부하 — 자동 재시도 중)";
     }
 
-    throw new Error(
-      `Gemini 이미지 생성 실패 (${response.status})${hint}: ${errorText.slice(0, 200)}`
+    const err: any = new Error(
+      `Gemini 이미지 생성 실패 (${status})${hint}: ${errorText.slice(0, 200)}`
     );
+    err.status = status;
+    // 재시도 가능 여부 표시 (503, 429, 500, 502, 504)
+    err.retryable = status === 503 || status === 429 || status === 500 || status === 502 || status === 504;
+    throw err;
   }
 
   const data = await response.json();
@@ -201,18 +197,105 @@ async function generateOneImage(
     throw new Error("응답에 이미지 데이터가 포함되어 있지 않습니다.");
   }
 
-  const base64 = imagePart.inlineData.data;
-  const mimeType = imagePart.inlineData.mimeType || "image/png";
-  const ext = mimeType.split("/")[1] || "png";
+  return {
+    base64: imagePart.inlineData.data,
+    mimeType: imagePart.inlineData.mimeType || "image/png",
+  };
+}
 
+/**
+ * 재시도 + fallback 지원 이미지 생성
+ * - 각 모델마다 최대 3번 재시도 (지수 백오프: 2s, 4s, 8s)
+ * - Pro 모델이 재시도 후에도 실패하면 Free 모델로 자동 fallback
+ */
+async function generateOneImage(
+  prompt: string,
+  role: ImageRole,
+  user_id: string,
+  page_id: string,
+  useProModel = false,
+  referenceImages: ReferenceImage[] = []
+): Promise<GeneratedImageResult> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY가 설정되지 않았습니다.");
+
+  const isAuthKey = apiKey.startsWith("AQ.");
+  const isStandardKey = apiKey.startsWith("AIza");
+  if (!isAuthKey && !isStandardKey) {
+    console.warn(
+      `[Gemini] Unrecognized API key prefix. Expected 'AQ.' (auth) or 'AIza' (standard).`
+    );
+  }
+
+  // 시도할 모델 목록: Pro 사용자면 Pro 먼저, 실패 시 Free로 fallback
+  const modelChain: string[] = useProModel ? [MODEL_PRO, MODEL_FREE] : [MODEL_FREE];
+
+  const MAX_ATTEMPTS_PER_MODEL = 3;
+  const RETRY_DELAYS = [2000, 4000, 8000]; // 2s → 4s → 8s
+
+  let lastError: any = null;
+  let result: { base64: string; mimeType: string } | null = null;
+  let usedModel = "";
+
+  outer: for (const model of modelChain) {
+    for (let attempt = 0; attempt < MAX_ATTEMPTS_PER_MODEL; attempt++) {
+      try {
+        console.log(
+          `[Gemini] ${role} 시도 ${attempt + 1}/${MAX_ATTEMPTS_PER_MODEL} — model=${model}`
+        );
+        result = await callGeminiOnce(prompt, model, apiKey, referenceImages);
+        usedModel = model;
+        break outer; // 성공 시 전체 루프 탈출
+      } catch (err: any) {
+        lastError = err;
+        const status = err?.status;
+        const retryable = err?.retryable;
+
+        console.warn(
+          `[Gemini] ${role} 실패 (attempt ${attempt + 1}, model=${model}, status=${status}): ${err?.message?.slice(0, 150)}`
+        );
+
+        // 재시도 불가능한 에러(400/401/403/404)는 즉시 다음 모델로 (또는 최종 실패)
+        if (!retryable) {
+          console.log(`[Gemini] ${role} 재시도 불가능 에러 — 모델 전환 시도`);
+          break; // 이 모델의 재시도 루프 종료 → 다음 모델 시도
+        }
+
+        // 마지막 시도가 아니면 백오프 대기
+        if (attempt < MAX_ATTEMPTS_PER_MODEL - 1) {
+          const delay = RETRY_DELAYS[attempt] ?? 8000;
+          console.log(`[Gemini] ${role} ${delay}ms 대기 후 재시도...`);
+          await new Promise((r) => setTimeout(r, delay));
+        }
+      }
+    }
+
+    if (result) break;
+    // 다음 모델로 fallback
+    if (modelChain.indexOf(model) < modelChain.length - 1) {
+      console.log(
+        `[Gemini] ${role} — ${model} 최대 재시도 초과, ${modelChain[modelChain.indexOf(model) + 1]} 모델로 fallback`
+      );
+    }
+  }
+
+  if (!result) {
+    // 모든 시도 실패
+    throw lastError ?? new Error(`${role}: Gemini 이미지 생성 모든 시도 실패`);
+  }
+
+  console.log(`[Gemini] ${role} ✅ 성공 (used model=${usedModel})`);
+
+  // 이미지 저장
+  const ext = result.mimeType.split("/")[1] || "png";
   const admin = createAdminClient();
-  const buffer = Buffer.from(base64, "base64");
+  const buffer = Buffer.from(result.base64, "base64");
   const path = `${user_id}/${page_id}/${role}-${generateShortId(6)}.${ext}`;
 
   const { error: uploadError } = await admin.storage
     .from("generated-images")
     .upload(path, buffer, {
-      contentType: mimeType,
+      contentType: result.mimeType,
       upsert: false,
     });
 

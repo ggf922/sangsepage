@@ -315,28 +315,109 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     const errorMessage = err?.message ?? String(err);
     console.error("[generate] ❌ AI pipeline failed:", errorMessage);
+    console.error("[generate] Error stack:", err?.stack);
 
-    // 실패 상태로 업데이트
-    await admin
-      .from("generated_pages")
-      .update({
-        status: "failed",
-        error_message: errorMessage.slice(0, 500),
-      })
-      .eq("id", page_id);
+    // 실패 상태로 업데이트 (실패해도 환불은 진행)
+    try {
+      await admin
+        .from("generated_pages")
+        .update({
+          status: "failed",
+          error_message: errorMessage.slice(0, 500),
+        })
+        .eq("id", page_id);
+    } catch (updateErr: any) {
+      console.error("[generate] ⚠️ failed to update page status:", updateErr?.message);
+    }
 
-    // 포인트 환불
-    const refundResult = await refundPoints({
-      user_id: user.id,
-      amount: cost,
-      description: `[환불] 상세페이지 생성 실패 - ${product.name}`,
-      reference_id: page_id,
-      metadata: {
-        product_id,
-        template_id,
-        error: errorMessage.slice(0, 200),
-      },
-    });
+    // ---------- 포인트 환불 (최대 3회 재시도) ----------
+    // 환불이 반드시 성공하도록 재시도 로직 추가
+    let refundResult: { success: boolean; balance_after?: number; error?: string } = {
+      success: false,
+      error: "환불 시도 안 됨",
+    };
+    let refundAttempts = 0;
+    const MAX_REFUND_ATTEMPTS = 3;
+
+    while (refundAttempts < MAX_REFUND_ATTEMPTS) {
+      refundAttempts++;
+      try {
+        console.log(
+          `[generate] 💰 환불 시도 ${refundAttempts}/${MAX_REFUND_ATTEMPTS} — user=${user.id}, amount=${cost}P`
+        );
+        const attemptResult = await refundPoints({
+          user_id: user.id,
+          amount: cost,
+          description: `[환불] 상세페이지 생성 실패 - ${product.name}${
+            refundAttempts > 1 ? ` (재시도 #${refundAttempts})` : ""
+          }`,
+          reference_id: page_id,
+          metadata: {
+            product_id,
+            template_id,
+            error: errorMessage.slice(0, 200),
+            refund_attempt: refundAttempts,
+          },
+        });
+
+        if (attemptResult.success) {
+          refundResult = {
+            success: true,
+            balance_after: attemptResult.balance_after,
+          };
+          console.log(
+            `[generate] ✅ 환불 성공 (attempt ${refundAttempts}) — new balance: ${attemptResult.balance_after}P`
+          );
+          break;
+        } else {
+          console.error(
+            `[generate] ❌ 환불 실패 (attempt ${refundAttempts}): ${attemptResult.error}`
+          );
+          refundResult = { success: false, error: attemptResult.error };
+        }
+      } catch (refundErr: any) {
+        console.error(
+          `[generate] ❌ 환불 예외 (attempt ${refundAttempts}):`,
+          refundErr?.message,
+          refundErr?.stack
+        );
+        refundResult = {
+          success: false,
+          error: refundErr?.message ?? "환불 중 예외 발생",
+        };
+      }
+
+      // 마지막 시도가 아니면 1초 대기 후 재시도
+      if (refundAttempts < MAX_REFUND_ATTEMPTS && !refundResult.success) {
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+    }
+
+    // 환불이 완전히 실패한 경우 — 관리자 알림용 로그 (Vercel logs에서 확인)
+    if (!refundResult.success) {
+      console.error(
+        `[generate] 🚨🚨🚨 환불 완전 실패! 수동 처리 필요 — user=${user.id}, amount=${cost}P, page_id=${page_id}, reason=${refundResult.error}`
+      );
+      // 관리자 감시를 위한 별도 테이블 기록 시도 (있으면 사용, 없으면 무시)
+      try {
+        await admin.from("point_transactions").insert({
+          user_id: user.id,
+          type: "refund_failed" as any,
+          amount: cost,
+          balance_after: -1, // 실패 표시
+          description: `[환불실패-수동처리필요] ${product.name}`,
+          reference_id: page_id,
+          metadata: {
+            product_id,
+            error: errorMessage.slice(0, 200),
+            refund_error: refundResult.error,
+            manual_refund_required: true,
+          },
+        });
+      } catch {
+        // 로깅 실패는 무시 (이미 콘솔에 남았음)
+      }
+    }
 
     return NextResponse.json(
       {
@@ -344,6 +425,7 @@ export async function POST(req: NextRequest) {
         page_id,
         refunded: refundResult.success,
         balance_after: refundResult.success ? refundResult.balance_after : null,
+        refund_error: refundResult.success ? undefined : refundResult.error,
       },
       { status: 500 }
     );
