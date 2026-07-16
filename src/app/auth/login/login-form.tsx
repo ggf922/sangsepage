@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { translateAuthError } from "@/lib/supabase/error-messages";
@@ -66,9 +67,17 @@ export default function LoginForm() {
       </div>
 
       <div>
-        <label htmlFor="password" className="mb-2 block text-sm font-medium">
-          비밀번호
-        </label>
+        <div className="mb-2 flex items-center justify-between">
+          <label htmlFor="password" className="block text-sm font-medium">
+            비밀번호
+          </label>
+          <Link
+            href="/auth/reset-password"
+            className="text-xs text-muted-foreground hover:text-brand hover:underline"
+          >
+            비밀번호를 잊으셨나요?
+          </Link>
+        </div>
         <input
           id="password"
           type="password"

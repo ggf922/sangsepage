@@ -82,6 +82,32 @@ export function translateAuthError(errorMessage: string): string {
     return "가입되지 않은 이메일입니다. 회원가입을 먼저 진행해 주세요.";
   }
 
+  // 비밀번호 재설정 - 같은 비밀번호로 변경 시도
+  if (
+    msg.includes("new password should be different") ||
+    msg.includes("same password") ||
+    msg.includes("password should be different")
+  ) {
+    return "이전과 다른 새 비밀번호를 입력해 주세요.";
+  }
+
+  // 비밀번호 재설정 - 링크 만료/무효
+  if (
+    msg.includes("token has expired") ||
+    msg.includes("recovery token") ||
+    msg.includes("otp_expired")
+  ) {
+    return "재설정 링크가 만료되었습니다. 새 링크를 다시 요청해 주세요.";
+  }
+
+  // 비밀번호 재설정 - 세션 없음
+  if (
+    msg.includes("auth session missing") ||
+    msg.includes("session not found")
+  ) {
+    return "인증 세션이 없습니다. 재설정 링크를 다시 요청해 주세요.";
+  }
+
   // 그 외 알려지지 않은 에러 — 원문 반환 (개발/디버그용)
   // 프로덕션에서는 아래 주석 해제 고려:
   // return "요청 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.";
