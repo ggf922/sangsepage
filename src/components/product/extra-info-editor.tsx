@@ -27,6 +27,7 @@ const SECTIONS: Section[] = [
       { key: "size", label: "사이즈", placeholder: "예: 20 x 15 x 10cm" },
       { key: "material", label: "재질/소재", placeholder: "예: 국내산 무·배추" },
       { key: "manufacturer", label: "제조사", placeholder: "예: (주)오가미" },
+      { key: "seller", label: "판매사", placeholder: "예: (주)상세페이지 / 서울시 강남구 …" },
       { key: "expiry", label: "유통기한", placeholder: "예: 제조일로부터 30일" },
       { key: "storage", label: "보관방법", placeholder: "예: 냉장(0~10℃) 보관", type: "textarea" },
       { key: "usage", label: "사용/섭취방법", placeholder: "예: 개봉 후 냉장보관, 7일 이내 섭취", type: "textarea" },

@@ -503,6 +503,7 @@ const INFO_LABELS: Record<string, string> = {
   size: "사이즈",
   material: "재질/소재",
   manufacturer: "제조사",
+  seller: "판매사",
   expiry: "유통기한",
   storage: "보관방법",
   usage: "사용방법",

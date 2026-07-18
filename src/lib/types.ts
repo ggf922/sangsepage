@@ -67,6 +67,7 @@ export interface ProductExtraInfo {
   size?: string;
   material?: string;
   manufacturer?: string;
+  seller?: string;
   expiry?: string;
   storage?: string;
   usage?: string;
