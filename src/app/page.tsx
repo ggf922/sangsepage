@@ -129,7 +129,7 @@ export default async function HomePage() {
                 href="/auth/signup"
                 className="group inline-flex items-center justify-center gap-2 rounded-full bg-brand px-8 py-4 text-[15px] font-semibold tracking-tight text-white shadow-lg shadow-brand/25 transition-all hover:-translate-y-0.5 hover:bg-brand-dark hover:shadow-xl hover:shadow-brand/35"
               >
-                무료로 3장 만들어보기
+                무료로 1장 만들기
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
               <Link
@@ -166,7 +166,7 @@ export default async function HomePage() {
         <div className="container mx-auto px-6 py-14">
           <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
             <StatItem value="30초" label="평균 생성 시간" />
-            <StatItem value="20만 → 3천" label="외주 대비 비용 절감" unit="원" />
+            <StatItem value="20만 → 4,500" label="외주 대비 비용 절감 (3$)" unit="원" />
             <StatItem value="5가지" label="프리미엄 스타일" />
             <StatItem value="4개국어" label="자동 다국어 지원" />
           </div>
@@ -183,7 +183,7 @@ export default async function HomePage() {
             왜 <span className="text-brand">88km</span>인가요?
           </h2>
           <p className="text-[15px] leading-[1.75] text-ink/60 md:text-[17px] md:leading-[1.7]">
-            외주 20만원짜리 상세페이지를 <span className="font-semibold text-brand">3천원</span>에.
+            외주 20만원짜리 상세페이지를 <span className="font-semibold text-brand">4,500원 (3$)</span>에.
             <br />
             품질은 그대로, 시간은 <span className="font-semibold text-brand">100배 빠르게</span>.
           </p>
