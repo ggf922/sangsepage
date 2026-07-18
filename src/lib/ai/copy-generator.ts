@@ -330,6 +330,7 @@ ${productContext}
 - process가 명확하지 않은 상품(공산품 등)은 3~4단계로 사용/보관법을 대신 작성
 - ingredients가 비어있으면 ingredients_intro는 비워도 됨 (null)
 - spec_summary.items는 5~7개로 제한
+- spec_summary.items에 원산지·유통기한·중량·용량·사이즈·재질/소재·보관방법·제조사·판매사는 넣지 마세요 (이 항목들은 사용자 입력값으로 시스템이 자동 삽입합니다). 대신 인증·수상·성분·기타 특징 등 부가 정보로 채워주세요.
 - 모든 텍스트는 순수 텍스트 (HTML 태그 금지)
 - 위 카테고리 예시를 참고하되, 절대 그대로 복사하지 말고 이 상품에 맞게 새로 쓰기`;
 
@@ -372,7 +373,7 @@ ${productContext}
     }
   }
 
-  return normalizeCopy(parsed);
+  return normalizeCopy(parsed, product);
 }
 
 /**
@@ -520,8 +521,8 @@ const INFO_LABELS: Record<string, string> = {
   awards: "수상",
 };
 
-/** 누락된 필드 기본값 채우기 */
-function normalizeCopy(copy: Partial<GeneratedCopy>): GeneratedCopy {
+/** 누락된 필드 기본값 채우기 + 사용자 입력 상품 정보를 spec_summary에 강제 병합 */
+function normalizeCopy(copy: Partial<GeneratedCopy>, product?: Product): GeneratedCopy {
   return {
     hero: {
       badge: copy.hero?.badge ?? "",
@@ -543,7 +544,7 @@ function normalizeCopy(copy: Partial<GeneratedCopy>): GeneratedCopy {
     },
     spec_summary: {
       heading: copy.spec_summary?.heading ?? "제품 정보",
-      items: copy.spec_summary?.items ?? [],
+      items: buildMergedSpecItems(copy.spec_summary?.items ?? [], product),
     },
     shipping_summary: {
       heading: copy.shipping_summary?.heading ?? "배송 안내",
@@ -554,4 +555,53 @@ function normalizeCopy(copy: Partial<GeneratedCopy>): GeneratedCopy {
       seo_description: copy.meta?.seo_description ?? "",
     },
   };
+}
+
+/**
+ * 사용자가 입력한 상품 정보를 spec_summary.items에 강제 병합.
+ *
+ * 원칙:
+ * 1) 사용자 입력이 최우선 (source of truth) — AI가 누락하거나 다른 값을 넣어도 사용자 입력으로 덮어씀
+ * 2) 사용자가 입력한 원산지·유통기한·중량/용량·재질·보관방법·제조사·판매사는 반드시 표시
+ * 3) AI가 추가로 생성한 항목(예: '인증', '수상')은 뒤에 이어붙임 (중복 라벨은 제거)
+ * 4) 표시 순서는 소비자에게 중요한 순서로 고정: 원산지 → 유통기한 → 중량 → 용량 → 재질/소재 → 보관방법 → 제조사 → 판매사
+ */
+function buildMergedSpecItems(
+  aiItems: Array<{ label: string; value: string }>,
+  product?: Product
+): Array<{ label: string; value: string }> {
+  const forced: Array<{ label: string; value: string }> = [];
+
+  if (product) {
+    const info = product.extra_info || {};
+
+    // (label, rawValue) 튜플로 표시 순서 고정
+    const orderedFields: Array<[string, string | undefined | null]> = [
+      ["원산지", product.origin],
+      ["유통기한", info.expiry],
+      ["중량", info.weight],
+      ["용량", info.volume],
+      ["사이즈", info.size],
+      ["재질/소재", info.material],
+      ["보관방법", info.storage],
+      ["제조사", info.manufacturer],
+      ["판매사", info.seller],
+    ];
+
+    for (const [label, rawValue] of orderedFields) {
+      const value = typeof rawValue === "string" ? rawValue.trim() : "";
+      if (value) {
+        forced.push({ label, value });
+      }
+    }
+  }
+
+  // AI가 추가로 생성한 항목 중, 강제 병합 라벨과 겹치지 않는 것만 뒤에 이어붙임
+  const forcedLabels = new Set(forced.map((it) => it.label));
+  const extra = (aiItems || [])
+    .filter((it) => it && typeof it.label === "string" && typeof it.value === "string")
+    .filter((it) => it.label.trim() && it.value.trim())
+    .filter((it) => !forcedLabels.has(it.label.trim()));
+
+  return [...forced, ...extra];
 }
