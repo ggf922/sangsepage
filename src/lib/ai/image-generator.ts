@@ -721,3 +721,116 @@ export async function generateAllImages(
 
   return results;
 }
+
+// ============================================================
+// 부분 재생성: 지정된 role만 새로 만들고 나머지는 기존 이미지 유지
+// ============================================================
+
+/**
+ * 특정 role만 재생성하는 함수.
+ * - roles에 포함된 role만 새로 생성
+ * - roles에 없는 기존 이미지는 그대로 반환
+ * - 최종 결과 순서는 buildImagePrompts()의 순서를 유지
+ */
+export async function generateSelectedImages(
+  product: Product,
+  template: Template,
+  user_id: string,
+  page_id: string,
+  roles: ImageRole[],
+  existingImages: GeneratedImageResult[],
+  useProModel = false
+): Promise<GeneratedImageResult[]> {
+  const targetRoles = new Set<ImageRole>(roles);
+  if (targetRoles.size === 0) return existingImages;
+
+  const allPrompts = buildImagePrompts(product, template);
+  const selectedPrompts = allPrompts.filter((p) => targetRoles.has(p.role));
+
+  // === 참조 이미지 사전 로드 (선택된 role에 필요한 것만) ===
+  const uniqueUrls = new Set<string>();
+  for (const role of targetRoles) {
+    for (const im of pickUserReferenceImages(product, role)) {
+      uniqueUrls.add(im.url);
+    }
+  }
+  const refCache: Record<string, ReferenceImage | null> = {};
+  if (uniqueUrls.size > 0) {
+    console.log(
+      `[generateSelectedImages] 참조 이미지 ${uniqueUrls.size}장 사전 로드 중...`
+    );
+    await Promise.all(
+      Array.from(uniqueUrls).map(async (url) => {
+        refCache[url] = await fetchReferenceImage(url);
+      })
+    );
+  }
+
+  // === 병렬 생성 ===
+  const BATCH_SIZE = useProModel ? 9 : 3;
+  const BATCH_DELAY = useProModel ? 0 : 1500;
+
+  const newResults: GeneratedImageResult[] = [];
+  const errors: string[] = [];
+
+  for (let i = 0; i < selectedPrompts.length; i += BATCH_SIZE) {
+    const batch = selectedPrompts.slice(i, i + BATCH_SIZE);
+    const settled = await Promise.allSettled(
+      batch.map(({ role, prompt }) => {
+        const refPicks = pickUserReferenceImages(product, role);
+        const refs: ReferenceImage[] = [];
+        for (const p of refPicks) {
+          const cached = refCache[p.url];
+          if (cached) refs.push(cached);
+        }
+        return generateOneImage(prompt, role, user_id, page_id, useProModel, refs);
+      })
+    );
+    for (let j = 0; j < settled.length; j++) {
+      const s = settled[j];
+      if (s.status === "fulfilled") {
+        newResults.push(s.value);
+      } else {
+        errors.push(`${batch[j].role}: ${s.reason?.message ?? "Unknown"}`);
+      }
+    }
+    if (i + BATCH_SIZE < selectedPrompts.length && BATCH_DELAY > 0) {
+      await new Promise((r) => setTimeout(r, BATCH_DELAY));
+    }
+  }
+
+  if (newResults.length === 0) {
+    throw new Error(
+      `선택된 이미지 생성이 모두 실패했습니다:\n${errors.join("\n")}`
+    );
+  }
+  if (errors.length > 0) {
+    console.warn("[generateSelectedImages] partial failures:", errors);
+  }
+
+  // === 병합: 새 결과가 있는 role은 새 것으로, 없는 role은 기존 유지 ===
+  const newByRole = new Map<ImageRole, GeneratedImageResult>();
+  for (const r of newResults) newByRole.set(r.role, r);
+
+  const merged: GeneratedImageResult[] = [];
+  // 원본 순서 유지: buildImagePrompts 순서대로 검사
+  for (const { role } of allPrompts) {
+    const fresh = newByRole.get(role);
+    if (fresh) {
+      merged.push(fresh);
+      continue;
+    }
+    // 기존에 있던 것 유지
+    const old = existingImages.find((im) => im.role === role);
+    if (old) merged.push(old);
+  }
+  // buildImagePrompts에 없는(레거시 등) 기존 이미지도 뒤에 보존
+  const knownRoles = new Set(allPrompts.map((p) => p.role));
+  for (const old of existingImages) {
+    if (!knownRoles.has(old.role) && !newByRole.has(old.role)) {
+      merged.push(old);
+    }
+  }
+
+  return merged;
+}
