@@ -48,6 +48,45 @@ function esc(text: string | null | undefined): string {
     .replace(/'/g, "&#39;");
 }
 
+/**
+ * 원재료 비율값 정규화.
+ * - undefined/null/0 → 빈 문자열 (표시 안 함)
+ * - 숫자 → "N%" (소수점 있으면 그대로)
+ * - 문자열이면서 이미 %/단위 붙어있으면 그대로 사용
+ * - 순수 숫자 문자열이면 %를 붙임
+ */
+function formatPercentage(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "";
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || value === 0) return "";
+    return `${value}%`;
+  }
+  const s = String(value).trim();
+  if (!s || s === "0") return "";
+  // 이미 %가 붙었거나 g/ml/kg/L 같은 단위가 있으면 그대로
+  if (/[%％]|[a-zA-Z가-힣]/.test(s)) return s;
+  // 순수 숫자면 % 붙임
+  if (/^\d+(\.\d+)?$/.test(s)) return `${s}%`;
+  return s;
+}
+
+/**
+ * 문장 끝 안전 처리:
+ * - AI 답변이 문장 중간에 잘리는 것을 방지하기 위해, 마지막 글자가
+ *   한글 조사·중간글자 등 애매한 문자로 끝나면 마침표를 붙여 자연스럽게 마감.
+ * - 이미 . ! ? " ' … 등 종결 부호로 끝나면 그대로 둠.
+ */
+function ensureSentenceEnd(text: string | null | undefined): string {
+  const s = (text ?? "").trim();
+  if (!s) return "";
+  const last = s.slice(-1);
+  if (/[.!?…”"'’)\]】」』.]/.test(last)) return s;
+  // 한글 종결 어미(다/요/까/네/죠)로 끝나면 자연 문장 → 마침표 추가
+  if (/[다요까네죠]$/.test(s)) return `${s}.`;
+  // 그 외에도 문장이 있으면 마침표
+  return `${s}.`;
+}
+
 function findImage(images: GeneratedImageResult[], role: string): string {
   return images.find((i) => i.role === role)?.url ?? "";
 }
@@ -323,7 +362,8 @@ function renderKimchiOgami(input: RenderInput): string {
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Nanum+Myeongjo:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Noto Sans KR', sans-serif; color: ${text}; background: ${bg}; line-height: 1.7; }
+  body { font-family: 'Noto Sans KR', sans-serif; color: ${text}; background: ${bg}; line-height: 1.7; word-break: keep-all; overflow-wrap: break-word; }
+  p, li, span, h1, h2, h3, h4, h5, h6, div { word-break: keep-all; overflow-wrap: break-word; }
   .page { width: 860px; margin: 0 auto; background: ${bg}; }
   .serif { font-family: 'Nanum Myeongjo', serif; }
   .section { padding: 60px 60px; }
@@ -349,7 +389,7 @@ function renderKimchiOgami(input: RenderInput): string {
   <section class="section" style="background:${bgLight};text-align:center;">
     <h2 class="serif" style="font-size:32px;font-weight:700;color:${primary};margin-bottom:12px;">${esc(copy.intro.heading)}</h2>
     <div class="divider"></div>
-    <p style="font-size:16px;color:${text};max-width:640px;margin:0 auto;line-height:2;">${esc(copy.intro.body)}</p>
+    <p style="font-size:16px;color:${text};max-width:640px;margin:0 auto;line-height:2;">${esc(ensureSentenceEnd(copy.intro.body))}</p>
   </section>
 
   <!-- GIF: after_intro -->
@@ -404,14 +444,14 @@ function renderKimchiOgami(input: RenderInput): string {
   <section class="section" style="background:${bgLight};">
     <h2 class="serif" style="font-size:32px;font-weight:700;color:${primary};text-align:center;margin-bottom:12px;">${esc(copy.ingredients_intro.heading)}</h2>
     <div class="divider"></div>
-    <p style="font-size:16px;color:${text};max-width:640px;margin:0 auto 40px;line-height:2;text-align:center;">${esc(copy.ingredients_intro.body)}</p>
+    <p style="font-size:16px;color:${text};max-width:640px;margin:0 auto 40px;line-height:2;text-align:center;">${esc(ensureSentenceEnd(copy.ingredients_intro.body))}</p>
     ${ingredientImg ? `<img src="${ingredientImg}" alt="원재료" style="width:100%;border-radius:8px;margin-bottom:32px;">` : ""}
     <div style="background:#fff;border-radius:12px;padding:32px;">
       <h3 style="font-size:18px;font-weight:700;color:${primary};margin-bottom:20px;text-align:center;letter-spacing:2px;">주요 원재료</h3>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
         ${product.ingredients.map(ing => `
         <div style="padding:16px;background:${bgLight};border-radius:8px;border-left:3px solid ${primary};">
-          <div style="font-size:16px;font-weight:700;color:${text};margin-bottom:4px;">${esc(ing.name)}${ing.percentage ? ` <span style="font-size:12px;color:${primary};">${ing.percentage}%</span>` : ""}</div>
+          <div style="font-size:16px;font-weight:700;color:${text};margin-bottom:4px;">${esc(ing.name)}${formatPercentage(ing.percentage) ? ` <span style="font-size:12px;color:${primary};">${formatPercentage(ing.percentage)}</span>` : ""}</div>
           ${ing.origin ? `<div style="font-size:13px;color:#666;margin-bottom:2px;">원산지: ${esc(ing.origin)}</div>` : ""}
           ${ing.note ? `<div style="font-size:13px;color:#666;">${esc(ing.note)}</div>` : ""}
         </div>
@@ -478,7 +518,7 @@ function renderKimchiOgami(input: RenderInput): string {
   <section class="section" style="background:${bgLight};text-align:center;">
     <h2 class="serif" style="font-size:36px;font-weight:800;color:${primary};margin-bottom:20px;line-height:1.4;">${esc(copy.signature.heading)}</h2>
     <div class="divider"></div>
-    <p style="font-size:16px;color:${text};max-width:600px;margin:0 auto 32px;line-height:2;">${esc(copy.signature.body)}</p>
+    <p style="font-size:16px;color:${text};max-width:600px;margin:0 auto 32px;line-height:2;">${esc(ensureSentenceEnd(copy.signature.body))}</p>
     ${signatureImg ? `<img src="${signatureImg}" alt="시그니처" style="width:100%;max-width:640px;margin:0 auto;border-radius:8px;">` : ""}
   </section>
 
@@ -493,7 +533,7 @@ function renderKimchiOgami(input: RenderInput): string {
   <!-- 12. Shipping -->
   <section class="section" style="background:${primary};color:#fff;text-align:center;">
     <h2 class="serif" style="font-size:28px;font-weight:700;color:#fff;margin-bottom:16px;">${esc(copy.shipping_summary.heading)}</h2>
-    <p style="font-size:15px;opacity:0.9;line-height:2;max-width:560px;margin:0 auto;">${esc(copy.shipping_summary.body)}</p>
+    <p style="font-size:15px;opacity:0.9;line-height:2;max-width:560px;margin:0 auto;">${esc(ensureSentenceEnd(copy.shipping_summary.body))}</p>
   </section>
 
   <!-- Footer -->
@@ -535,7 +575,8 @@ function renderHouseholdModern(input: RenderInput): string {
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Inter', 'Noto Sans KR', sans-serif; color: ${text}; background: ${bgLight}; line-height: 1.7; }
+  body { font-family: 'Inter', 'Noto Sans KR', sans-serif; color: ${text}; background: ${bgLight}; line-height: 1.7; word-break: keep-all; overflow-wrap: break-word; }
+  p, li, span, h1, h2, h3, h4, h5, h6, div { word-break: keep-all; overflow-wrap: break-word; }
   .page { width: 860px; margin: 0 auto; }
   .section { padding: 80px 80px; }
   img { max-width: 100%; display: block; }
@@ -554,7 +595,7 @@ function renderHouseholdModern(input: RenderInput): string {
 
   <section class="section" style="background:${bg};text-align:center;">
     <h2 style="font-size:28px;font-weight:400;color:${text};margin-bottom:32px;">${esc(copy.intro.heading)}</h2>
-    <p style="font-size:16px;color:#555;max-width:560px;margin:0 auto;line-height:2;font-weight:300;">${esc(copy.intro.body)}</p>
+    <p style="font-size:16px;color:#555;max-width:560px;margin:0 auto;line-height:2;font-weight:300;">${esc(ensureSentenceEnd(copy.intro.body))}</p>
   </section>
 
   <!-- GIF: after_intro -->
@@ -610,7 +651,7 @@ function renderHouseholdModern(input: RenderInput): string {
 
   <section class="section" style="background:${primary};color:#fff;text-align:center;">
     <h2 style="font-size:32px;font-weight:300;margin-bottom:20px;">${esc(copy.signature.heading)}</h2>
-    <p style="font-size:15px;opacity:0.8;max-width:520px;margin:0 auto;line-height:2;font-weight:300;">${esc(copy.signature.body)}</p>
+    <p style="font-size:15px;opacity:0.8;max-width:520px;margin:0 auto;line-height:2;font-weight:300;">${esc(ensureSentenceEnd(copy.signature.body))}</p>
   </section>
 
   ${product.sale_channels?.length ? `
@@ -664,7 +705,8 @@ function renderElectronicsTech(input: RenderInput): string {
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700;900&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:'Inter','Noto Sans KR',sans-serif;color:#fff;background:${bg};line-height:1.7;}
+  body{font-family:'Inter','Noto Sans KR',sans-serif;color:#fff;background:${bg};line-height:1.7;word-break:keep-all;overflow-wrap:break-word;}
+  p,li,span,h1,h2,h3,h4,h5,h6,div{word-break:keep-all;overflow-wrap:break-word;}
   .page{width:860px;margin:0 auto;background:${bg};}
   .section{padding:80px 60px;}
   img{max-width:100%;display:block;}
@@ -683,7 +725,7 @@ function renderElectronicsTech(input: RenderInput): string {
 
   <section class="section" style="background:${bgLight};text-align:center;">
     <h2 style="font-size:36px;font-weight:700;color:${primary};margin-bottom:24px;">${esc(copy.intro.heading)}</h2>
-    <p style="font-size:16px;color:#a3a3a3;max-width:640px;margin:0 auto;line-height:2;">${esc(copy.intro.body)}</p>
+    <p style="font-size:16px;color:#a3a3a3;max-width:640px;margin:0 auto;line-height:2;">${esc(ensureSentenceEnd(copy.intro.body))}</p>
   </section>
 
   <!-- GIF: after_intro -->
@@ -743,7 +785,7 @@ function renderElectronicsTech(input: RenderInput): string {
 
   <section class="section" style="background:${primary};color:${bg};text-align:center;">
     <h2 style="font-size:40px;font-weight:900;margin-bottom:20px;letter-spacing:-1px;">${esc(copy.signature.heading)}</h2>
-    <p style="font-size:15px;max-width:560px;margin:0 auto;line-height:2;font-weight:500;">${esc(copy.signature.body)}</p>
+    <p style="font-size:15px;max-width:560px;margin:0 auto;line-height:2;font-weight:500;">${esc(ensureSentenceEnd(copy.signature.body))}</p>
   </section>
 
   ${product.sale_channels?.length ? `
@@ -791,7 +833,8 @@ function renderHealthNatural(input: RenderInput): string {
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Nanum+Myeongjo:wght@400;700&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:'Noto Sans KR',sans-serif;color:${text};background:${bg};line-height:1.7;}
+  body{font-family:'Noto Sans KR',sans-serif;color:${text};background:${bg};line-height:1.7;word-break:keep-all;overflow-wrap:break-word;}
+  p,li,span,h1,h2,h3,h4,h5,h6,div{word-break:keep-all;overflow-wrap:break-word;}
   .page{width:860px;margin:0 auto;background:${bg};}
   .section{padding:60px 60px;}
   .serif{font-family:'Nanum Myeongjo',serif;}
@@ -811,7 +854,7 @@ function renderHealthNatural(input: RenderInput): string {
 
   <section class="section" style="background:${bg};text-align:center;">
     <h2 class="serif" style="font-size:30px;font-weight:700;color:${primary};margin-bottom:24px;">${esc(copy.intro.heading)}</h2>
-    <p style="font-size:16px;color:${text};max-width:600px;margin:0 auto;line-height:2;">${esc(copy.intro.body)}</p>
+    <p style="font-size:16px;color:${text};max-width:600px;margin:0 auto;line-height:2;">${esc(ensureSentenceEnd(copy.intro.body))}</p>
   </section>
 
   <!-- GIF: after_intro -->
@@ -839,12 +882,12 @@ function renderHealthNatural(input: RenderInput): string {
   <section class="section" style="background:${bg};">
     <h2 class="serif" style="font-size:28px;font-weight:700;color:${primary};text-align:center;margin-bottom:24px;">${copy.ingredients_intro ? esc(copy.ingredients_intro.heading) : "원재료"}</h2>
     <img src="${ingredientImg}" alt="원재료" style="width:100%;border-radius:12px;margin-bottom:24px;">
-    ${copy.ingredients_intro ? `<p style="font-size:15px;color:${text};max-width:600px;margin:0 auto 32px;line-height:2;text-align:center;">${esc(copy.ingredients_intro.body)}</p>` : ""}
+    ${copy.ingredients_intro ? `<p style="font-size:15px;color:${text};max-width:600px;margin:0 auto 32px;line-height:2;text-align:center;">${esc(ensureSentenceEnd(copy.ingredients_intro.body))}</p>` : ""}
     <div style="background:${bgLight};border-radius:12px;padding:28px;">
       ${product.ingredients.map(ing => `
       <div style="padding:12px 0;border-bottom:1px solid rgba(0,0,0,0.05);">
         <span style="font-weight:700;color:${primary};">${esc(ing.name)}</span>
-        ${ing.percentage ? ` <span style="font-size:13px;color:#888;">${ing.percentage}%</span>` : ""}
+        ${formatPercentage(ing.percentage) ? ` <span style="font-size:13px;color:#888;">${formatPercentage(ing.percentage)}</span>` : ""}
         ${ing.origin ? ` <span style="font-size:13px;color:#888;">· ${esc(ing.origin)}</span>` : ""}
       </div>
       `).join("")}
@@ -880,7 +923,7 @@ function renderHealthNatural(input: RenderInput): string {
 
   <section class="section" style="background:${primary};color:#fff;text-align:center;">
     <h2 class="serif" style="font-size:32px;font-weight:700;margin-bottom:20px;">${esc(copy.signature.heading)}</h2>
-    <p style="font-size:15px;opacity:0.95;max-width:540px;margin:0 auto;line-height:2;">${esc(copy.signature.body)}</p>
+    <p style="font-size:15px;opacity:0.95;max-width:540px;margin:0 auto;line-height:2;">${esc(ensureSentenceEnd(copy.signature.body))}</p>
   </section>
 
   ${product.sale_channels?.length ? `
@@ -930,7 +973,8 @@ function renderCosmeticsLuxury(input: RenderInput): string {
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Nanum+Myeongjo:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:'Noto Sans KR',sans-serif;color:${text};background:${bg};line-height:1.8;font-weight:300;}
+  body{font-family:'Noto Sans KR',sans-serif;color:${text};background:${bg};line-height:1.8;font-weight:300;word-break:keep-all;overflow-wrap:break-word;}
+  p,li,span,h1,h2,h3,h4,h5,h6,div{word-break:keep-all;overflow-wrap:break-word;}
   .page{width:860px;margin:0 auto;background:${bg};}
   .section{padding:80px 60px;}
   .serif{font-family:'Nanum Myeongjo',serif;}
@@ -953,7 +997,7 @@ function renderCosmeticsLuxury(input: RenderInput): string {
   <section class="section" style="background:${bg};text-align:center;">
     <h2 class="serif" style="font-size:32px;font-weight:400;color:${primary};margin-bottom:8px;font-style:italic;">${esc(copy.intro.heading)}</h2>
     <div class="divider"></div>
-    <p style="font-size:15px;color:${text};max-width:560px;margin:24px auto 0;line-height:2.2;">${esc(copy.intro.body)}</p>
+    <p style="font-size:15px;color:${text};max-width:560px;margin:24px auto 0;line-height:2.2;">${esc(ensureSentenceEnd(copy.intro.body))}</p>
   </section>
 
   <!-- GIF: after_intro -->
@@ -988,7 +1032,7 @@ function renderCosmeticsLuxury(input: RenderInput): string {
     <h2 class="serif" style="font-size:28px;font-weight:400;color:${primary};text-align:center;margin-bottom:8px;font-style:italic;">${copy.ingredients_intro ? esc(copy.ingredients_intro.heading) : "Key Ingredients"}</h2>
     <div class="divider"></div>
     <img src="${ingredientImg}" alt="원료" style="width:100%;border-radius:4px;margin:32px 0;">
-    ${copy.ingredients_intro ? `<p style="font-size:14px;color:${text};max-width:560px;margin:0 auto 32px;text-align:center;line-height:2.2;">${esc(copy.ingredients_intro.body)}</p>` : ""}
+    ${copy.ingredients_intro ? `<p style="font-size:14px;color:${text};max-width:560px;margin:0 auto 32px;text-align:center;line-height:2.2;">${esc(ensureSentenceEnd(copy.ingredients_intro.body))}</p>` : ""}
     <div style="background:${bgLight};padding:32px;">
       ${product.ingredients.slice(0, 6).map(ing => `
       <div style="padding:16px 0;border-bottom:1px solid rgba(0,0,0,0.05);display:flex;justify-content:space-between;align-items:center;">
@@ -1029,7 +1073,7 @@ function renderCosmeticsLuxury(input: RenderInput): string {
   <section class="section" style="background:${accent};color:${bgLight};text-align:center;">
     <h2 class="serif" style="font-size:34px;font-weight:400;margin-bottom:16px;font-style:italic;">${esc(copy.signature.heading)}</h2>
     <div style="width:40px;height:1px;background:#fff;opacity:0.5;margin:16px auto;"></div>
-    <p style="font-size:14px;opacity:0.95;max-width:520px;margin:0 auto;line-height:2.2;font-weight:300;">${esc(copy.signature.body)}</p>
+    <p style="font-size:14px;opacity:0.95;max-width:520px;margin:0 auto;line-height:2.2;font-weight:300;">${esc(ensureSentenceEnd(copy.signature.body))}</p>
   </section>
 
   ${product.sale_channels?.length ? `

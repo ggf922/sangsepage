@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { FileText, Sparkles, Eye, Download } from "lucide-react";
+import { FileText, Sparkles, Eye, Download, Pencil } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 const LANGUAGE_LABELS: Record<string, string> = {
@@ -111,6 +111,13 @@ export default async function PagesPage() {
                         title="보기"
                       >
                         <Eye className="h-3.5 w-3.5" />
+                      </Link>
+                      <Link
+                        href={`/dashboard/pages/${page.id}/edit`}
+                        className="rounded-md border border-brand/20 p-1.5 text-brand hover:bg-brand hover:text-white"
+                        title="수정"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
                       </Link>
                       <a
                         href={`/api/pages/${page.id}/download`}
