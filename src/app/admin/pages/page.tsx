@@ -223,7 +223,7 @@ export default async function AdminPagesPage({ searchParams }: PageProps) {
                       {p.points_used}P
                     </td>
                     <td className="p-3 text-xs text-slate-600">
-                      {p.edit_count}/{p.max_edits}
+                      {p.edit_count > 0 ? `${p.edit_count}회` : "-"}
                     </td>
                     <td className="p-3 text-xs text-slate-500">
                       {formatDate(p.created_at)}

@@ -630,12 +630,32 @@ export function buildImagePrompts(
 // 병렬 생성 (참조 이미지 사전 로드 포함)
 // ============================================================
 
+/**
+ * 사용자가 입력한 재생성 지시사항을 이미지 프롬프트 뒤에 부착.
+ * 영어 프롬프트의 뉘앙스를 유지하면서 사용자 요청을 최우선 지침으로 명시.
+ */
+function appendUserInstructions(
+  prompt: string,
+  userInstructions: string
+): string {
+  const trimmed = (userInstructions ?? "").trim();
+  if (!trimmed) return prompt;
+  return `${prompt}
+
+USER OVERRIDE (HIGHEST PRIORITY — must reflect this request in the final image):
+"""
+${trimmed}
+"""
+Interpret this as the client's revision request. Apply it visually even if it slightly conflicts with the styling above.`;
+}
+
 export async function generateAllImages(
   product: Product,
   template: Template,
   user_id: string,
   page_id: string,
-  useProModel = false
+  useProModel = false,
+  userInstructions = ""
 ): Promise<GeneratedImageResult[]> {
   const prompts = buildImagePrompts(product, template);
 
@@ -693,7 +713,8 @@ export async function generateAllImages(
           const cached = refCache[p.url];
           if (cached) refs.push(cached);
         }
-        return generateOneImage(prompt, role, user_id, page_id, useProModel, refs);
+        const finalPrompt = appendUserInstructions(prompt, userInstructions);
+        return generateOneImage(finalPrompt, role, user_id, page_id, useProModel, refs);
       })
     );
 
@@ -739,7 +760,8 @@ export async function generateSelectedImages(
   page_id: string,
   roles: ImageRole[],
   existingImages: GeneratedImageResult[],
-  useProModel = false
+  useProModel = false,
+  userInstructions = ""
 ): Promise<GeneratedImageResult[]> {
   const targetRoles = new Set<ImageRole>(roles);
   if (targetRoles.size === 0) return existingImages;
@@ -783,7 +805,8 @@ export async function generateSelectedImages(
           const cached = refCache[p.url];
           if (cached) refs.push(cached);
         }
-        return generateOneImage(prompt, role, user_id, page_id, useProModel, refs);
+        const finalPrompt = appendUserInstructions(prompt, userInstructions);
+        return generateOneImage(finalPrompt, role, user_id, page_id, useProModel, refs);
       })
     );
     for (let j = 0; j < settled.length; j++) {

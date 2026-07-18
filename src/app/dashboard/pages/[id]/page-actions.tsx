@@ -39,8 +39,7 @@ export default function PageActions({
   const [regenerating, setRegenerating] = useState(false);
   const [regenError, setRegenError] = useState<string | null>(null);
 
-  const canEdit = editCount < maxEdits;
-  const remainingEdits = maxEdits - editCount;
+  // 수정 횟수 제한 제거 — 포인트가 있으면 언제든 수정 가능
   const REGEN_COST = 30; // 재생성은 기본 30P (Self-Critique는 자동 무료 적용)
   const canRegenerate = productId && templateId && points >= REGEN_COST;
 
@@ -140,25 +139,18 @@ export default function PageActions({
         {downloading ? "다운로드 중..." : "HTML 다운로드"}
       </button>
 
-      {canEdit ? (
-        <Link
-          href={`/dashboard/pages/${pageId}/edit`}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
-        >
-          <Edit className="h-4 w-4" />
-          수정하기 (10P · {remainingEdits}회 남음)
-        </Link>
-      ) : (
-        <button
-          type="button"
-          disabled
-          title="수정 횟수를 모두 사용하셨습니다"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-500"
-        >
-          <Edit className="h-4 w-4" />
-          수정 완료 ({maxEdits}/{maxEdits})
-        </button>
-      )}
+      <Link
+        href={`/dashboard/pages/${pageId}/edit`}
+        className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
+      >
+        <Edit className="h-4 w-4" />
+        수정하기
+        {editCount > 0 && (
+          <span className="ml-1 rounded-full bg-white/25 px-1.5 py-0.5 text-[10px]">
+            {editCount}회 완료
+          </span>
+        )}
+      </Link>
 
       {/* 재생성 버튼 */}
       {productId && templateId && (

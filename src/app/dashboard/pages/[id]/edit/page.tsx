@@ -43,12 +43,8 @@ export default async function EditPage({ params }: PageProps) {
 
   const points = profile?.points ?? 0;
   const editCount = page.edit_count ?? 0;
-  const maxEdits = page.max_edits ?? 3;
-  const remaining = maxEdits - editCount;
-
-  if (remaining <= 0) {
-    redirect(`/dashboard/pages/${id}`);
-  }
+  const maxEdits = page.max_edits ?? 999; // 하위 호환용 (실제 제한 없음)
+  // 수정 횟수 제한 제거 — 포인트가 있으면 언제든 수정 가능
 
   return (
     <div className="p-8">
@@ -83,12 +79,14 @@ export default async function EditPage({ params }: PageProps) {
                 {points.toLocaleString()} P
               </p>
             </div>
-            <div className="border-l border-brand/10 pl-4">
-              <p className="text-xs text-muted-foreground">남은 수정 횟수</p>
-              <p className="font-serif text-lg font-bold text-ink">
-                {remaining} / {maxEdits}회
-              </p>
-            </div>
+            {editCount > 0 && (
+              <div className="border-l border-brand/10 pl-4">
+                <p className="text-xs text-muted-foreground">누적 수정</p>
+                <p className="font-serif text-lg font-bold text-ink">
+                  {editCount}회
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

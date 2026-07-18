@@ -95,10 +95,13 @@ export default async function PagesPage() {
                     {LANGUAGE_LABELS[page.language] || page.language}
                   </td>
                   <td className="p-4 text-sm">
-                    <span className="text-brand">{page.edit_count}</span>
-                    <span className="text-muted-foreground">
-                      /{page.max_edits}
-                    </span>
+                    {page.edit_count > 0 ? (
+                      <span className="text-brand">
+                        {page.edit_count}회
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
                   </td>
                   <td className="p-4 text-sm text-muted-foreground">
                     {formatDate(page.created_at)}

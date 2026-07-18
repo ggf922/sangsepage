@@ -17,6 +17,7 @@ import {
   Info,
   Wand2,
   ListChecks,
+  MessageSquare,
 } from "lucide-react";
 
 type EditMode = "copy_only" | "images_only" | "all" | "partial";
@@ -152,7 +153,9 @@ interface Props {
   points: number;
 }
 
-export default function EditPanel({ pageId, editCount, maxEdits, points }: Props) {
+const INSTRUCTIONS_MAX = 800;
+
+export default function EditPanel({ pageId, editCount, points }: Props) {
   const router = useRouter();
   const [selectedMode, setSelectedMode] = useState<EditMode>("partial");
   const [useProModel, setUseProModel] = useState(false);
@@ -164,6 +167,9 @@ export default function EditPanel({ pageId, editCount, maxEdits, points }: Props
   // partial 모드에서 사용하는 선택 상태
   const [selectedCopySections, setSelectedCopySections] = useState<CopySection[]>([]);
   const [selectedImageSections, setSelectedImageSections] = useState<ImageSection[]>([]);
+
+  // 사용자가 직접 입력하는 재생성 지시사항 (모든 모드에 적용)
+  const [userInstructions, setUserInstructions] = useState("");
 
   const mode = MODES.find((m) => m.code === selectedMode)!;
 
@@ -182,7 +188,6 @@ export default function EditPanel({ pageId, editCount, maxEdits, points }: Props
   const partialHasSelection =
     selectedCopySections.length > 0 || selectedImageSections.length > 0;
   const canAfford = points >= computedCost;
-  const remaining = maxEdits - editCount;
 
   const needsImages =
     selectedMode === "images_only" ||
@@ -238,6 +243,7 @@ export default function EditPanel({ pageId, editCount, maxEdits, points }: Props
           body: JSON.stringify({
             mode: selectedMode,
             use_pro_model: useProModel,
+            instructions: userInstructions.trim(),
             ...(selectedMode === "partial"
               ? {
                   copy_sections: selectedCopySections,
@@ -275,7 +281,7 @@ export default function EditPanel({ pageId, editCount, maxEdits, points }: Props
         어떻게 수정하시겠어요?
       </h2>
       <p className="mb-5 text-xs text-muted-foreground">
-        수정 횟수는 페이지당 최대 {maxEdits}회까지 사용할 수 있으며, 카피/이미지 여부에 따라 포인트가 다릅니다.
+        포인트가 충분하면 횟수 제한 없이 원하는 만큼 수정할 수 있습니다. 카피/이미지 범위에 따라 포인트가 달라집니다.
       </p>
 
       {/* 모드 선택 */}
@@ -471,6 +477,54 @@ export default function EditPanel({ pageId, editCount, maxEdits, points }: Props
         </div>
       )}
 
+      {/* 사용자 지시사항 - 모든 모드에서 사용 가능 */}
+      <div className="mb-5 rounded-lg border border-brand/20 bg-white p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-sm font-bold text-ink">
+            <MessageSquare className="h-4 w-4 text-brand" />
+            수정 요청사항
+            <span className="rounded bg-brand/10 px-1.5 py-0.5 text-[10px] font-medium text-brand">
+              선택 · 강력 추천
+            </span>
+          </div>
+          <span
+            className={
+              userInstructions.length > INSTRUCTIONS_MAX * 0.9
+                ? "text-[10px] text-amber-600"
+                : "text-[10px] text-muted-foreground"
+            }
+          >
+            {userInstructions.length}/{INSTRUCTIONS_MAX}
+          </span>
+        </div>
+        <p className="mb-2 text-[11px] leading-relaxed text-muted-foreground">
+          이번 재생성에 반영할 요청을 자유롭게 적어주세요. AI가 최우선으로 반영합니다.
+          <br />
+          예)
+          <em className="text-ink"> &quot;더 감성적인 카페 감성으로&quot;</em>,
+          <em className="text-ink"> &quot;배경은 흰색 대리석으로&quot;</em>,
+          <em className="text-ink"> &quot;20~30대 여성 타겟 문구로&quot;</em>,
+          <em className="text-ink"> &quot;마무리 문구는 짧고 임팩트있게&quot;</em>
+        </p>
+        <textarea
+          value={userInstructions}
+          onChange={(e) => {
+            setConfirmed(false);
+            setUserInstructions(e.target.value.slice(0, INSTRUCTIONS_MAX));
+          }}
+          placeholder="이렇게 바꿔주세요..."
+          rows={3}
+          disabled={isPending}
+          className="w-full resize-y rounded-md border border-brand/20 bg-ivory/40 p-2.5 text-sm text-ink placeholder:text-muted-foreground/60 focus:border-brand focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand/30 disabled:opacity-60"
+        />
+        {userInstructions.trim().length > 0 && (
+          <p className="mt-1.5 flex items-center gap-1 text-[10px] text-emerald-700">
+            <CheckCircle2 className="h-3 w-3" />
+            AI가 이 요청을 반영해서 재생성합니다.
+          </p>
+        )}
+      </div>
+
       {/* 이미지 모델 선택 (이미지 재생성 시만 표시) */}
       {needsImages && (
         <div className="mb-5 rounded-lg border border-brand/10 bg-ivory p-3">
@@ -524,9 +578,9 @@ export default function EditPanel({ pageId, editCount, maxEdits, points }: Props
             </p>
           </div>
           <div>
-            <p className="mb-0.5 text-xs text-muted-foreground">수정 잔여</p>
+            <p className="mb-0.5 text-xs text-muted-foreground">누적 수정</p>
             <p className="font-serif text-lg font-bold text-ink">
-              {remaining - 1}회
+              {editCount + 1}회째
             </p>
           </div>
         </div>
@@ -554,8 +608,7 @@ export default function EditPanel({ pageId, editCount, maxEdits, points }: Props
           className="mt-0.5 accent-brand"
         />
         <span>
-          <strong>{computedCost}P가 차감</strong>되고, 수정 횟수가{" "}
-          <strong>1회 소비</strong>됨을 이해했습니다.
+          <strong>{computedCost}P가 차감</strong>됨을 이해했습니다.
         </span>
       </label>
 

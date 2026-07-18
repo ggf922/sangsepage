@@ -193,8 +193,8 @@ export default async function PageDetailPage({ params }: PageProps) {
             />
             <MetaCard
               icon={<Edit className="h-4 w-4 text-brand" />}
-              label="수정 횟수"
-              value={`${page.edit_count} / ${page.max_edits}`}
+              label="누적 수정"
+              value={page.edit_count > 0 ? `${page.edit_count}회` : "-"}
             />
             <MetaCard
               icon={<Package className="h-4 w-4 text-brand" />}

@@ -226,6 +226,12 @@ function pickCategoryGuide(product: Product, template: Template): CategoryGuide 
 export interface GenerateCopyOptions {
   /** Self-Critique 2-pass 강제 ON/OFF. undefined면 환경변수(COPY_SELF_CRITIQUE) 사용 */
   selfCritique?: boolean;
+  /**
+   * 사용자가 직접 입력한 재생성 지시사항.
+   * 예) "더 감성적으로", "젊은 세대 타겟으로", "카페 감성으로 바꿔주세요"
+   * 프롬프트에 최우선 지침으로 삽입됨.
+   */
+  userInstructions?: string;
 }
 
 export async function generateCopy(
@@ -241,8 +247,21 @@ export async function generateCopy(
   const productContext = buildProductContext(product);
   const guide = pickCategoryGuide(product, template);
 
+  // 사용자가 직접 입력한 재생성 지시사항 (있으면 최우선 반영)
+  const userInstructionsBlock = (options.userInstructions ?? "").trim();
+  const userInstructionsSection = userInstructionsBlock
+    ? `\n\n# ⚠️ 사용자 요청사항 (최우선 반영 — 반드시 지킬 것)
+아래는 이 상세페이지를 다시 만들면서 회원이 직접 요청한 내용입니다.
+다른 원칙과 충돌하면 이 지시사항을 우선하여 반영하세요.
+
+"""
+${userInstructionsBlock}
+"""
+`
+    : "";
+
   const systemPrompt = `당신은 한국 이커머스(스마트스토어·쿠팡·자사몰) 상세페이지 카피라이팅 전문가입니다.
-15년 이상의 경력으로 오가미·설화수·무인양품·마켓컬리 상세페이지 카피를 작성해왔습니다.
+15년 이상의 경력으로 오가미·설화수·무인양품·마켓컬리 상세페이지 카피를 작성해왔습니다.${userInstructionsSection}
 
 # 작성 원칙 (반드시 지켜야 하는 6가지)
 1. 첫 문장에서 소비자의 감정을 사로잡을 것 — 상황·장면·감각으로 시작하기

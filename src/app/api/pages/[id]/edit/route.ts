@@ -5,19 +5,20 @@
 //
 // Flow:
 //   1. Auth check + 본인 소유 확인
-//   2. edit_count < max_edits 확인
-//   3. 포인트 차감 (5P for copy_only, 10P for images/all)
-//   4. 기존 페이지 로드 (product, template, 기존 copy/images)
-//   5. mode 별 재생성:
+//   2. 포인트 차감 (5P for copy_only, 10P for images/all, 3P+ for partial)
+//      * 횟수 제한 없음 - 포인트만 있으면 무제한 수정 가능
+//   3. 기존 페이지 로드 (product, template, 기존 copy/images)
+//   4. mode 별 재생성 (사용자 instructions 반영):
 //      - copy_only: copy만 재생성, images 유지
 //      - images_only: images만 재생성, copy 유지
 //      - all: 둘 다 재생성
-//   6. HTML 재렌더링
-//   7. UPDATE generated_pages (edit_count++)
-//   8. 실패 시 포인트 환불
+//      - partial: 선택 섹션만 재생성
+//   5. HTML 재렌더링
+//   6. UPDATE generated_pages (edit_count++ - 통계용)
+//   7. 실패 시 포인트 환불
 //
 // Body:
-//   { mode: "copy_only" | "images_only" | "all", instructions?: string }
+//   { mode, instructions?: string, copy_sections?, image_sections?, use_pro_model? }
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
@@ -79,7 +80,7 @@ function computePartialCost(
 
 interface EditRequestBody {
   mode: EditMode;
-  instructions?: string; // 재생성 시 추가 지시사항 (미래 확장용)
+  instructions?: string; // 사용자가 직접 입력한 재생성 지시사항 (예: "더 감성적으로 바꿔줘")
   use_pro_model?: boolean;
   copy_sections?: CopySection[];   // partial 모드에서만 사용
   image_sections?: ImageSection[]; // partial 모드에서만 사용
@@ -105,7 +106,14 @@ export async function POST(
     use_pro_model = false,
     copy_sections = [],
     image_sections = [],
+    instructions: rawInstructions,
   } = body;
+
+  // 사용자 지시사항 정규화 (최대 800자, 앞뒤 공백 제거)
+  const userInstructions =
+    typeof rawInstructions === "string"
+      ? rawInstructions.trim().slice(0, 800)
+      : "";
 
   if (!mode || !["copy_only", "images_only", "all", "partial"].includes(mode)) {
     return NextResponse.json(
@@ -180,12 +188,8 @@ export async function POST(
   const editCount = pageRow.edit_count ?? 0;
   const maxEdits = pageRow.max_edits ?? 3;
 
-  if (editCount >= maxEdits) {
-    return NextResponse.json(
-      { error: `수정 횟수를 모두 사용하셨습니다. (${editCount}/${maxEdits})` },
-      { status: 403 }
-    );
-  }
+  // 수정 횟수 제한 제거 — 포인트가 차감되므로 원하는 만큼 수정 가능
+  // (edit_count는 통계용으로만 증가시킴)
 
   const product = pageRow.product as Product | null;
   const template = pageRow.template as Template | null;
@@ -216,12 +220,13 @@ export async function POST(
   const deductResult = await deductPoints({
     user_id: user.id,
     amount: cost,
-    description: `상세페이지 ${modeLabel} - ${product.name} (${editCount + 1}/${maxEdits}회차)`,
+    description: `상세페이지 ${modeLabel} - ${product.name} (${editCount + 1}회차)`,
     reference_id: page_id,
     metadata: {
       page_id,
       mode,
       edit_count: editCount + 1,
+      ...(userInstructions ? { user_instructions: userInstructions.slice(0, 200) } : {}),
       ...(mode === "partial"
         ? { copy_sections, image_sections }
         : {}),
@@ -246,21 +251,24 @@ export async function POST(
     // 5-1. 카피 재생성 (copy_only, all)
     if (mode === "copy_only" || mode === "all") {
       const copyStart = Date.now();
-      console.log(`[edit] Regenerating copy (full)...`);
-      newCopy = await generateCopy(product, template, language);
+      console.log(`[edit] Regenerating copy (full)...`, userInstructions ? `with user instructions` : "");
+      newCopy = await generateCopy(product, template, language, {
+        userInstructions,
+      });
       console.log(`[edit] Copy regenerated in ${Date.now() - copyStart}ms`);
     }
 
     // 5-2. 이미지 재생성 (images_only, all)
     if (mode === "images_only" || mode === "all") {
       const imgStart = Date.now();
-      console.log(`[edit] Regenerating images (pro=${use_pro_model})...`);
+      console.log(`[edit] Regenerating images (pro=${use_pro_model})...`, userInstructions ? `with user instructions` : "");
       newImages = await generateAllImages(
         product,
         template,
         user.id,
         page_id,
-        use_pro_model
+        use_pro_model,
+        userInstructions
       );
       console.log(
         `[edit] ${newImages.length} images regenerated in ${Date.now() - imgStart}ms`
@@ -274,9 +282,12 @@ export async function POST(
       if (copy_sections.length > 0) {
         const copyStart = Date.now();
         console.log(
-          `[edit] Regenerating copy (partial): sections=${copy_sections.join(",")}`
+          `[edit] Regenerating copy (partial): sections=${copy_sections.join(",")}`,
+          userInstructions ? `with user instructions` : ""
         );
-        const freshCopy = await generateCopy(product, template, language);
+        const freshCopy = await generateCopy(product, template, language, {
+          userInstructions,
+        });
 
         // 섹션 → 카피 필드 매핑
         const merged: GeneratedCopy = { ...oldCopy } as GeneratedCopy;
@@ -326,7 +337,8 @@ export async function POST(
           page_id,
           targetRoles,
           oldImages,
-          use_pro_model
+          use_pro_model,
+          userInstructions
         );
         console.log(
           `[edit] ${targetRoles.length} image roles regenerated in ${Date.now() - imgStart}ms`
