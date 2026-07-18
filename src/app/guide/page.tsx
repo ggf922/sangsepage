@@ -17,6 +17,12 @@ import {
   Gift,
   Palette,
   Globe,
+  Rocket,
+  Trash2,
+  Edit3,
+  Infinity as InfinityIcon,
+  MessageSquare,
+  Film,
 } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -105,6 +111,12 @@ export default function GuidePage() {
               ④ 편집·공유
             </a>
             <a
+              href="#whats-new"
+              className="rounded-full border border-brand/40 bg-gradient-to-r from-brand/10 to-brand/5 px-4 py-2 text-[13px] font-semibold text-brand transition hover:from-brand/15 hover:to-brand/10"
+            >
+              🆕 최신 업데이트
+            </a>
+            <a
               href="#quality"
               className="rounded-full border border-brand/30 bg-brand/5 px-4 py-2 text-[13px] font-semibold text-brand transition hover:bg-brand/10"
             >
@@ -119,14 +131,14 @@ export default function GuidePage() {
         <div className="mx-auto max-w-4xl">
           <div className="grid gap-4 md:grid-cols-3">
             <StatCard icon={<Sparkles className="h-5 w-5" />} value="30초" label="1장 평균 생성 시간" />
-            <StatCard icon={<Gift className="h-5 w-5" />} value="100P 무료" label="신규가입 시 자동 지급" />
+            <StatCard icon={<Gift className="h-5 w-5" />} value="50P 무료" label="신규가입 시 자동 지급" />
             <StatCard icon={<Globe className="h-5 w-5" />} value="4개 국어" label="한/영/일/중 자동 번역" />
           </div>
         </div>
       </section>
 
       {/* Step 1 - Signup */}
-      <Section id="step-1" step="STEP 1" title="회원가입 & 100P 무료 지급" icon={<UserPlus className="h-6 w-6" />}>
+      <Section id="step-1" step="STEP 1" title="회원가입 & 50P 무료 지급" icon={<UserPlus className="h-6 w-6" />}>
         <div className="space-y-4 text-[15px] leading-relaxed text-ink/80">
           <p>
             <Link href="/auth/signup" className="text-brand font-medium underline underline-offset-4 hover:text-brand-dark">
@@ -134,13 +146,13 @@ export default function GuidePage() {
             </Link>
             에서 이메일과 비밀번호로 계정을 만드세요. 카드 등록은 필요 없습니다.
           </p>
-          <Callout type="info" title="가입 즉시 100P 자동 지급">
-            첫 상세페이지를 <b>무료로 3장(30P × 3 = 90P)</b> 만들어 볼 수 있어요.
+          <Callout type="info" title="가입 즉시 50P 자동 지급">
+            첫 상세페이지를 <b>무료로 1장(45P) 생성</b> + <b>남은 5P로 부분 수정 1회</b>까지 체험해 볼 수 있어요.
             추가로 필요할 때만 포인트를 충전하시면 됩니다.
           </Callout>
           <ol className="ml-4 list-decimal space-y-2 text-ink/75">
             <li>이메일 인증 링크를 클릭해 계정을 활성화합니다.</li>
-            <li>대시보드로 이동하면 우측 상단에 <b>보유 포인트(100P)</b>가 표시됩니다.</li>
+            <li>대시보드로 이동하면 우측 상단에 <b>보유 포인트(50P)</b>가 표시됩니다.</li>
             <li>다국어로 판매 예정이라면 헤더의 언어 스위처에서 언어를 선택하세요.</li>
           </ol>
         </div>
@@ -217,7 +229,7 @@ export default function GuidePage() {
           </div>
 
           <Callout type="info" title="포인트 차감 안내">
-            페이지 1장당 <b>30P가 차감</b>됩니다. 신규가입 100P로 3장을 만들 수 있어요.
+            페이지 1장당 <b>45P(약 4,500원 / 3$)가 차감</b>됩니다. 신규가입 50P로 첫 1장은 무료로 만들 수 있어요.
             생성이 실패하면 자동으로 <b>포인트가 환불</b>됩니다.
           </Callout>
         </div>
@@ -246,6 +258,139 @@ export default function GuidePage() {
         </div>
       </Section>
 
+      {/* What's New — Turn 1~7 improvements */}
+      <section id="whats-new" className="border-y-2 border-brand/15 bg-gradient-to-b from-brand/[0.04] via-white to-transparent">
+        <div className="container mx-auto px-6 py-20">
+          <div className="mx-auto max-w-4xl">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-4 py-1.5 text-[12px] font-semibold tracking-wide text-brand">
+              <Rocket className="h-3.5 w-3.5" />
+              WHAT&apos;S NEW · 2026
+            </div>
+            <h2 className="mb-3 font-serif text-[36px] font-bold tracking-tight md:text-[44px]">
+              🆕 최근 업데이트로 <span className="text-brand">더 똑똑해진 88km</span>
+            </h2>
+            <p className="mb-10 text-[16px] text-ink/70">
+              사용자 피드백을 반영해 <b>편집 자유도·품질·편의성</b>을 대폭 강화했어요. 지금부터는 아래 기능을 모두 무제한으로 활용하실 수 있습니다.
+            </p>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <NewFeature
+                icon={<Edit3 className="h-5 w-5" />}
+                badge="편집"
+                title="선택 섹션만 골라 재생성"
+                cost="3P부터"
+              >
+                히어로, 상세컷, 스토리 등 원하는 <b>섹션 1개만</b> 골라 재생성할 수 있어요.
+                섹션 1개는 3P, 여러 개를 골라도 <b>최대 10P</b>로 저렴하게. 전체 스타일은 유지되고 원하는 부분만 새로 뽑습니다.
+              </NewFeature>
+
+              <NewFeature
+                icon={<InfinityIcon className="h-5 w-5" />}
+                badge="편집"
+                title="수정 횟수 무제한"
+                cost="포인트만 있으면 OK"
+              >
+                기존 &ldquo;3회 제한&rdquo;이 완전히 사라졌습니다. 포인트가 남아 있는 한 <b>몇 번이든 반복해서 다듬을 수 있어요</b>.
+                누적 수정 횟수는 표시만 되고, 차감되지 않습니다.
+              </NewFeature>
+
+              <NewFeature
+                icon={<MessageSquare className="h-5 w-5" />}
+                badge="편집"
+                title="수정 지시사항 직접 입력"
+                cost="자유 텍스트"
+              >
+                &ldquo;헤드라인을 더 감성적으로&rdquo;, &ldquo;신뢰 배지에 HACCP 강조&rdquo; 같은 <b>사용자 지시사항 텍스트박스</b>를 제공합니다.
+                AI가 이 내용을 우선 반영해 재생성해요.
+              </NewFeature>
+
+              <NewFeature
+                icon={<FileText className="h-5 w-5" />}
+                badge="품질"
+                title="입력한 상품 정보가 무조건 반영"
+                cost="자동 · 무료"
+              >
+                &ldquo;상품 등록&rdquo;에서 적으신 특징·수치·인증은 상세페이지의 <b>&ldquo;제품 스펙&rdquo; 섹션에 강제 병합</b>됩니다.
+                AI가 놓치거나 임의로 축약하지 않습니다.
+              </NewFeature>
+
+              <NewFeature
+                icon={<Package className="h-5 w-5" />}
+                badge="입력"
+                title="&lsquo;판매사&rsquo; 필드 추가"
+                cost="입력 · 무료"
+              >
+                브랜드사와 판매사가 다른 경우(위탁 판매·총판 등)를 위해 <b>판매사(seller)</b> 필드를 새로 지원합니다.
+                신뢰 배지와 스펙 표에 자동 노출됩니다.
+              </NewFeature>
+
+              <NewFeature
+                icon={<Film className="h-5 w-5" />}
+                badge="이미지"
+                title="GIF 업로드 · 삽입"
+                cost="0.5MB 이하 권장"
+              >
+                움직이는 상품 사진(GIF)을 업로드해 상세페이지 안에 자연스럽게 배치할 수 있어요.
+                &ldquo;켜지는 조명&rdquo;, &ldquo;돌아가는 팬&rdquo; 같은 모션을 그대로 담습니다.
+              </NewFeature>
+
+              <NewFeature
+                icon={<Sparkles className="h-5 w-5" />}
+                badge="품질"
+                title="원재료 % 자동 표기"
+                cost="자동 · 무료"
+              >
+                &ldquo;마늘 30&rdquo;처럼 숫자만 적어도 <b>&ldquo;마늘 30%&rdquo;</b>로 자동 보정합니다.
+                합계가 100%가 아니면 알림도 뜹니다.
+              </NewFeature>
+
+              <NewFeature
+                icon={<Globe className="h-5 w-5" />}
+                badge="가독성"
+                title="한글 자연 줄바꿈 + 문장 완결"
+                cost="자동 · 무료"
+              >
+                모바일에서 어색하게 잘리던 한글 텍스트가 <b>어절 단위로 자연스럽게</b> 줄바꿈됩니다.
+                문장 끝이 잘린 경우 자동으로 완결 처리해요.
+              </NewFeature>
+
+              <NewFeature
+                icon={<Edit3 className="h-5 w-5" />}
+                badge="편의"
+                title="목록에서 바로 수정 버튼"
+                cost="1-클릭"
+              >
+                &ldquo;내 페이지&rdquo; 목록 카드에서 <b>&ldquo;수정&rdquo; 버튼</b>을 바로 눌러 편집 화면으로 진입할 수 있어요.
+                상세 페이지를 열지 않고도 빠르게 다듬을 수 있습니다.
+              </NewFeature>
+
+              <NewFeature
+                icon={<Trash2 className="h-5 w-5" />}
+                badge="관리"
+                title="관리자 페이지 삭제"
+                cost="관리자 전용"
+              >
+                운영자 계정에서 부적절한 페이지·테스트 페이지를 <b>안전하게 삭제</b>할 수 있습니다.
+                삭제 시 이미지·번역·거래 이력이 함께 정리됩니다.
+              </NewFeature>
+            </div>
+
+            <div className="mt-10 rounded-2xl border border-brand/20 bg-white p-6">
+              <div className="mb-2 flex items-center gap-2 font-semibold text-brand">
+                <Gift className="h-5 w-5" />
+                요금 정책 조정 안내
+              </div>
+              <ul className="space-y-1.5 text-[14px] text-ink/80">
+                <li>• <b>신규가입 보너스</b>: 100P → <b className="text-brand">50P</b> (첫 1장 생성 + 부분 수정 1회 가능)</li>
+                <li>• <b>페이지 생성</b>: 30P → <b className="text-brand">45P</b> (약 4,500원 / 3$) — 이미지·카피 품질 향상 반영</li>
+                <li>• <b>재생성·부분 수정·고급 모드 등 나머지 요금은 그대로</b> 유지됩니다 (재생성 30P, 부분 3~10P, 고급 +15P)</li>
+                <li>• 기존 가입 회원의 <b>보유 포인트는 변동 없이 그대로</b> 유지됩니다.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* QUALITY BOOSTER */}
       <section id="quality" className="border-y-2 border-brand/15 bg-gradient-to-b from-brand/[0.03] to-transparent">
         <div className="container mx-auto px-6 py-20">
@@ -258,7 +403,7 @@ export default function GuidePage() {
               ⭐ 상세페이지 <span className="text-brand">퀄러티 높이는 방법</span>
             </h2>
             <p className="mb-10 text-[16px] text-ink/70">
-              같은 30P라도, 이 6가지만 지키면 <b>외주 20만원짜리 수준</b>의 결과를 뽑을 수 있어요.
+              같은 45P라도, 이 6가지만 지키면 <b>외주 20만원짜리 수준</b>의 결과를 뽑을 수 있어요.
             </p>
 
             <div className="space-y-6">
@@ -371,7 +516,7 @@ export default function GuidePage() {
                   </div>
                 </div>
                 <p className="mt-3 text-[13px] text-ink/60">
-                  ※ 잘못 고르셨다면 30P로 다른 스타일로 재생성해서 비교해 보세요.
+                  ※ 잘못 고르셨다면 30P로 다른 스타일로 재생성해서 비교해 보세요. (재생성은 스타일 변경 시 30P 고정)
                 </p>
               </QualityTip>
 
@@ -420,14 +565,14 @@ export default function GuidePage() {
                     <div>
                       <b className="text-brand">고급 모드 체크박스 (+15P)</b> — Free 회원도 페이지 생성 시
                       <b> &ldquo;AI 카피 재검수&rdquo; 체크박스</b>를 선택해 건별로 자유롭게 사용할 수 있습니다.
-                      추가 15P만 부담하시면 됩니다 (기본 30P → 45P).
+                      추가 15P만 부담하시면 됩니다 (기본 45P → 60P).
                     </div>
                   </div>
                   <div className="flex items-start gap-2 rounded-lg bg-blue-50 border border-blue-200 p-3">
                     <span className="rounded-full bg-blue-500 text-white text-[11px] font-bold px-2 py-0.5 flex-shrink-0">3</span>
                     <div>
                       <b className="text-blue-900">🔁 재생성 시 자동 무료 적용</b> — 첫 결과가 마음에 안 드셔서
-                      결과 페이지의 <b>&ldquo;재생성&rdquo; 버튼</b>을 누르시면, 같은 30P만 차감하고
+                      결과 페이지의 <b>&ldquo;재생성&rdquo; 버튼</b>을 누르시면, 재생성 요금 <b>30P</b>만 차감하고
                       <b> Self-Critique는 무료로 자동 적용</b>됩니다. 재도전 시엔 더 정제된 카피가 나옵니다.
                     </div>
                   </div>
@@ -460,9 +605,9 @@ export default function GuidePage() {
         <div className="mx-auto max-w-3xl">
           <h2 className="mb-8 text-center font-serif text-[32px] font-bold tracking-tight">자주 묻는 질문</h2>
           <div className="space-y-3">
-            <Faq q="1장에 정말 30P만 들어가나요?">
-              네. 텍스트 + 9개 이미지 + 신뢰 배지 + 브랜드 스토리까지 포함해서 30P 고정입니다.
-              생성이 실패한 경우엔 자동 환불됩니다.
+            <Faq q="1장에 정말 45P만 들어가나요?">
+              네. 텍스트 + 9개 이미지 + 신뢰 배지 + 브랜드 스토리까지 포함해서 <b>45P(약 4,500원 / 3$) 고정</b>입니다.
+              생성이 실패한 경우엔 자동 환불됩니다. (신규가입 50P로 첫 1장은 무료)
             </Faq>
             <Faq q="다른 사이트에서 만든 상품 사진을 그대로 써도 되나요?">
               저작권이 있는 이미지 사용은 지양해 주세요. 본인이 촬영한 원본을 업로드하시는 것을 권장합니다.
@@ -484,11 +629,16 @@ export default function GuidePage() {
               페이지 결과가 마음에 들지 않을 때 상세 화면의 <b>&ldquo;재생성&rdquo; 버튼</b>을 누르면
               같은 상품·스타일로 완전히 새로운 카피/이미지를 만듭니다. 이때{" "}
               <b>Self-Critique가 무료로 자동 적용</b>되어 첫 번보다 정제된 결과를 얻을 수 있습니다.
-              비용은 기본 30P만 차감됩니다.
+              비용은 <b>재생성 요금 30P</b>만 차감됩니다.
+            </Faq>
+            <Faq q="부분 수정은 얼마인가요? 몇 번까지 되나요?">
+              필요한 섹션만 골라서 재생성하는 <b>&ldquo;선택 섹션 수정&rdquo;</b>은 섹션 1개당 <b>3P부터</b>,
+              여러 섹션을 골라도 <b>최대 10P</b>로 저렴합니다. 신규가입 50P 안에서 잔여 5P로 1회 체험 가능.
+              <b> 수정 횟수 제한은 없습니다</b> — 포인트만 남아 있으면 원하는 만큼 반복할 수 있어요.
             </Faq>
             <Faq q="고급 모드(+15P)는 어떻게 사용하나요?">
               페이지 생성 마법사의 <b>3단계 &ldquo;언어 선택&rdquo;</b>에서 &ldquo;AI가 카피를 스스로 재검수&rdquo;
-              체크박스를 켜시면 됩니다. 총 <b>45P (기본 30P + 고급 15P)</b>가 차감되며, 진부한 표현 제거와
+              체크박스를 켜시면 됩니다. 총 <b>60P (기본 45P + 고급 15P)</b>가 차감되며, 진부한 표현 제거와
               후킹 강화가 자동으로 적용됩니다.
             </Faq>
           </div>
@@ -499,9 +649,9 @@ export default function GuidePage() {
       <section className="border-t border-black/[0.06] bg-white/50">
         <div className="container mx-auto px-6 py-16 text-center">
           <h2 className="mb-3 font-serif text-[32px] font-bold tracking-tight md:text-[40px]">
-            지금 바로 <span className="text-brand">무료로 3장</span> 만들어 보기
+            지금 바로 <span className="text-brand">무료로 1장</span> 만들어 보기
           </h2>
-          <p className="mb-8 text-[15px] text-ink/70">신규가입 100P · 카드 등록 불필요</p>
+          <p className="mb-8 text-[15px] text-ink/70">신규가입 50P · 카드 등록 불필요</p>
           <Link
             href="/auth/signup"
             className="inline-flex items-center gap-2 rounded-full bg-brand px-8 py-3.5 text-[15px] font-medium text-white shadow-sm shadow-brand/20 transition hover:bg-brand-dark hover:shadow-md hover:shadow-brand/30"
@@ -689,6 +839,38 @@ function QualityTip({
         </div>
       </div>
       <div className="ml-14 text-[14px] leading-relaxed text-ink/80">{children}</div>
+    </div>
+  );
+}
+
+function NewFeature({
+  icon,
+  badge,
+  title,
+  cost,
+  children,
+}: {
+  icon: React.ReactNode;
+  badge: string;
+  title: string;
+  cost: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-black/[0.08] bg-white p-5 shadow-sm transition hover:border-brand/30 hover:shadow-md">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-brand">
+            {icon}
+          </div>
+          <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-semibold text-brand">
+            {badge}
+          </span>
+        </div>
+        <span className="text-[11px] font-semibold text-ink/50">{cost}</span>
+      </div>
+      <h3 className="mb-2 font-serif text-[17px] font-bold text-ink">{title}</h3>
+      <div className="text-[13px] leading-relaxed text-ink/70">{children}</div>
     </div>
   );
 }

@@ -44,7 +44,7 @@ export default async function GeneratePage() {
           <div className="flex items-center gap-2">
             <Coins className="h-4 w-4 text-brand" />
             <span>기본 요금:</span>
-            <strong className="text-brand">30 P / 페이지</strong>
+            <strong className="text-brand">45 P / 페이지</strong>
           </div>
           <span className="text-muted-foreground">&middot; 추가 언어 +20P</span>
           <span className="text-muted-foreground">&middot; 고급 모드 +15P</span>

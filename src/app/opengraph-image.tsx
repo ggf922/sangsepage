@@ -133,7 +133,7 @@ export default async function OpengraphImage() {
             letterSpacing: -0.5,
           }}
         >
-          5가지 스타일 × 4개국어 · 지금 가입하면 100P 무료
+          5가지 스타일 × 4개국어 · 지금 가입하면 50P 무료
         </div>
 
         {/* Bottom badge */}

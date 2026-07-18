@@ -107,7 +107,7 @@ export default function SignupPage() {
               무료 회원가입
             </h1>
             <p className="text-sm text-muted-foreground">
-              🎁 지금 가입하면 100포인트 무료 (상세페이지 3장)
+              🎁 지금 가입하면 50포인트 무료 (상세페이지 1장 + 수정 여유)
             </p>
           </div>
 

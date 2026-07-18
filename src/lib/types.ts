@@ -228,11 +228,14 @@ export const CHARGE_STATUS_META: Record<ChargeStatus, { label: string; color: st
 };
 
 // ============ Point Cost Constants ============
+// 환율: 100원 = 1P
+// - CREATE_PAGE 45P = 4,500원 (약 3$) — 1회 상세페이지 생성 비용
+// - SIGNUP_BONUS 50P = 5,000원 — 신규가입 시 1회 무료 생성 + 소액 수정 여유
 export const POINT_COSTS = {
-  CREATE_PAGE: 30,
+  CREATE_PAGE: 45,
   EDIT_PAGE: 10,
   ADD_LANGUAGE: 20,
-  SIGNUP_BONUS: 100,
+  SIGNUP_BONUS: 50,
   PREMIUM_MODE_SURCHARGE: 15, // Self-Critique 고급 모드 추가 요금 (Free 회원만 적용)
 } as const;
 

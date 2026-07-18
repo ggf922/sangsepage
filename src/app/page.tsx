@@ -144,7 +144,7 @@ export default async function HomePage() {
             <div className="flex flex-col items-center justify-center gap-2.5 text-[13px] text-ink/50 sm:flex-row sm:gap-6">
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="h-4 w-4 text-brand/70" />
-                <span>가입 즉시 <b className="font-semibold text-ink/70">100P</b> 무료 지급</span>
+                <span>가입 즉시 <b className="font-semibold text-ink/70">50P</b> 무료 지급</span>
               </div>
               <div className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block" />
               <div className="flex items-center gap-1.5">
@@ -298,15 +298,15 @@ export default async function HomePage() {
         <div className="mx-auto grid max-w-4xl gap-4 md:grid-cols-3">
           <PriceCard
             title="페이지 생성"
-            points="30P"
+            points="45P"
             desc="상세페이지 1장 자동 생성"
-            approx="≈ 3,000원"
+            approx="≈ 4,500원"
           />
           <PriceCard
             title="부분 재생성"
-            points="5~10P"
-            desc="카피만·이미지만·전체 (최대 3회)"
-            approx="≈ 500~1,000원"
+            points="3~10P"
+            desc="카피·이미지·선택 섹션·전체 (무제한)"
+            approx="≈ 300~1,000원"
             highlight
           />
           <PriceCard
@@ -338,11 +338,11 @@ export default async function HomePage() {
               <h2 className="mb-5 font-serif text-[36px] font-bold leading-[1.2] tracking-[-0.02em] md:text-[52px]">
                 지금 가입하면
                 <br />
-                <span className="text-yellow-300">100P 무료</span> 지급
+                <span className="text-yellow-300">50P 무료</span> 지급
               </h2>
               <p className="mx-auto mb-10 max-w-lg text-[16px] leading-[1.7] text-white/80 md:text-[17px]">
-                상세페이지 <strong className="font-semibold text-white">3장</strong>{" "}
-                무료 제작 · 카드 등록 불필요
+                상세페이지 <strong className="font-semibold text-white">1장 무료 제작</strong>{" "}
+                · 카드 등록 불필요
                 <br />
                 지금 바로 시작하세요.
               </p>
