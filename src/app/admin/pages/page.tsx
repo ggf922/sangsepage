@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/server";
 import { FileText, Eye, Clock, CheckCircle2, AlertCircle } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import PageActions from "./page-actions";
 
 const STATUS_META: Record<
   string,
@@ -175,6 +176,7 @@ export default async function AdminPagesPage({ searchParams }: PageProps) {
                 <th className="p-3 text-left">포인트</th>
                 <th className="p-3 text-left">수정</th>
                 <th className="p-3 text-left">생성일</th>
+                <th className="p-3 text-right">작업</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -225,6 +227,16 @@ export default async function AdminPagesPage({ searchParams }: PageProps) {
                     </td>
                     <td className="p-3 text-xs text-slate-500">
                       {formatDate(p.created_at)}
+                    </td>
+                    <td className="p-3">
+                      <PageActions
+                        pageId={p.id}
+                        productName={p.product?.name ?? null}
+                        userName={p.user?.name ?? null}
+                        userEmail={p.user?.email ?? null}
+                        status={p.status}
+                        pointsUsed={p.points_used ?? 0}
+                      />
                     </td>
                   </tr>
                 );
