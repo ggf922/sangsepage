@@ -9,6 +9,7 @@ import {
   Download,
   CheckCircle2,
   Star,
+  BookOpen,
 } from "lucide-react";
 import { getI18n } from "@/lib/i18n/server";
 import { LanguageSwitcher } from "@/components/language-switcher";
@@ -20,7 +21,7 @@ export default async function HomePage() {
     <main className="min-h-screen bg-ivory-light text-ink [word-break:keep-all]">
       {/* ========== Header ========== */}
       <header className="sticky top-0 z-50 w-full border-b border-black/[0.06] bg-ivory-light/85 backdrop-blur-xl">
-        <div className="container mx-auto flex h-[72px] items-center justify-between px-6">
+        <div className="container mx-auto flex h-[72px] items-center justify-between px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2.5">
             <div className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-brand shadow-sm shadow-brand/20">
               <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent" />
@@ -58,7 +59,16 @@ export default async function HomePage() {
               이용안내
             </Link>
           </nav>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* 모바일 전용: 이용안내 아이콘 버튼 (md 이상에서는 상단 nav에 텍스트 링크로 노출됨) */}
+            <Link
+              href="/guide"
+              aria-label="이용안내"
+              title="이용안내"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-brand/15 bg-white/60 text-brand transition hover:border-brand/40 hover:bg-brand/5 md:hidden"
+            >
+              <BookOpen className="h-4 w-4" />
+            </Link>
             <LanguageSwitcher
               currentLocale={locale}
               variant="ghost"
@@ -141,19 +151,21 @@ export default async function HomePage() {
             </div>
 
             {/* Trust indicators */}
-            <div className="flex flex-col items-center justify-center gap-2.5 text-[13px] text-ink/50 sm:flex-row sm:gap-6">
-              <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4 text-brand/70" />
-                <span>가입 즉시 <b className="font-semibold text-ink/70">50P</b> 무료 지급</span>
+            {/* 모바일: 왼쪽 정렬 세로 리스트 (아이콘 열 정렬)
+                태블릿+: 가운데 정렬 가로 배치 */}
+            <div className="mx-auto flex w-fit max-w-full flex-col items-start gap-2.5 text-[13px] text-ink/60 sm:w-auto sm:flex-row sm:items-center sm:justify-center sm:gap-6">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-brand/70" />
+                <span>가입 즉시 <b className="font-semibold text-ink/80">50P</b> 무료 지급</span>
               </div>
               <div className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block" />
-              <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4 text-brand/70" />
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-brand/70" />
                 <span>카드 등록 없이 시작</span>
               </div>
               <div className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block" />
-              <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4 text-brand/70" />
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-brand/70" />
                 <span>4개국어 자동 번역</span>
               </div>
             </div>
