@@ -84,6 +84,7 @@ interface EditRequestBody {
   use_pro_model?: boolean;
   copy_sections?: CopySection[];   // partial 모드에서만 사용
   image_sections?: ImageSection[]; // partial 모드에서만 사용
+  reference_image_urls?: string[]; // 사용자가 이번 재생성용으로 첨부한 참조 이미지 URL (최대 3장)
 }
 
 export async function POST(
@@ -107,6 +108,7 @@ export async function POST(
     copy_sections = [],
     image_sections = [],
     instructions: rawInstructions,
+    reference_image_urls: rawReferenceUrls,
   } = body;
 
   // 사용자 지시사항 정규화 (최대 800자, 앞뒤 공백 제거)
@@ -114,6 +116,16 @@ export async function POST(
     typeof rawInstructions === "string"
       ? rawInstructions.trim().slice(0, 800)
       : "";
+
+  // 사용자가 첨부한 참조 이미지 URL 정규화 (최대 3장, https만 허용)
+  const referenceImageUrls: string[] = Array.isArray(rawReferenceUrls)
+    ? rawReferenceUrls
+        .filter(
+          (u: unknown): u is string =>
+            typeof u === "string" && /^https?:\/\//.test(u)
+        )
+        .slice(0, 3)
+    : [];
 
   if (!mode || !["copy_only", "images_only", "all", "partial"].includes(mode)) {
     return NextResponse.json(
@@ -227,6 +239,9 @@ export async function POST(
       mode,
       edit_count: editCount + 1,
       ...(userInstructions ? { user_instructions: userInstructions.slice(0, 200) } : {}),
+      ...(referenceImageUrls.length > 0
+        ? { reference_image_count: referenceImageUrls.length }
+        : {}),
       ...(mode === "partial"
         ? { copy_sections, image_sections }
         : {}),
@@ -261,14 +276,21 @@ export async function POST(
     // 5-2. 이미지 재생성 (images_only, all)
     if (mode === "images_only" || mode === "all") {
       const imgStart = Date.now();
-      console.log(`[edit] Regenerating images (pro=${use_pro_model})...`, userInstructions ? `with user instructions` : "");
+      console.log(
+        `[edit] Regenerating images (pro=${use_pro_model})...`,
+        userInstructions ? `with user instructions` : "",
+        referenceImageUrls.length > 0
+          ? `with ${referenceImageUrls.length} user reference image(s)`
+          : ""
+      );
       newImages = await generateAllImages(
         product,
         template,
         user.id,
         page_id,
         use_pro_model,
-        userInstructions
+        userInstructions,
+        referenceImageUrls
       );
       console.log(
         `[edit] ${newImages.length} images regenerated in ${Date.now() - imgStart}ms`
@@ -338,7 +360,8 @@ export async function POST(
           targetRoles,
           oldImages,
           use_pro_model,
-          userInstructions
+          userInstructions,
+          referenceImageUrls
         );
         console.log(
           `[edit] ${targetRoles.length} image roles regenerated in ${Date.now() - imgStart}ms`

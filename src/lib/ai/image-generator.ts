@@ -655,7 +655,8 @@ export async function generateAllImages(
   user_id: string,
   page_id: string,
   useProModel = false,
-  userInstructions = ""
+  userInstructions = "",
+  additionalReferenceUrls: string[] = []
 ): Promise<GeneratedImageResult[]> {
   const prompts = buildImagePrompts(product, template);
 
@@ -681,6 +682,10 @@ export async function generateAllImages(
     }
   }
 
+  // 사용자가 이번 재생성용으로 첨부한 참조 이미지도 로드 (모든 role에 공통 적용)
+  const extraUrls = (additionalReferenceUrls ?? []).filter(Boolean).slice(0, 3);
+  for (const u of extraUrls) uniqueUrls.add(u);
+
   const refCache: Record<string, ReferenceImage | null> = {};
   if (uniqueUrls.size > 0) {
     console.log(`[generateAllImages] 참조 이미지 ${uniqueUrls.size}장 사전 로드 중...`);
@@ -691,6 +696,13 @@ export async function generateAllImages(
     );
     const loaded = Object.values(refCache).filter(Boolean).length;
     console.log(`[generateAllImages] 참조 이미지 ${loaded}/${uniqueUrls.size}장 로드 완료`);
+  }
+
+  // 사용자 첨부 참조 이미지들의 미리 로드된 데이터 (모든 role에 추가로 주입)
+  const extraRefs: ReferenceImage[] = [];
+  for (const u of extraUrls) {
+    const cached = refCache[u];
+    if (cached) extraRefs.push(cached);
   }
 
   // === 병렬 생성 ===
@@ -713,6 +725,8 @@ export async function generateAllImages(
           const cached = refCache[p.url];
           if (cached) refs.push(cached);
         }
+        // 사용자가 이번 재생성용으로 첨부한 참조 이미지도 함께 주입
+        for (const r of extraRefs) refs.push(r);
         const finalPrompt = appendUserInstructions(prompt, userInstructions);
         return generateOneImage(finalPrompt, role, user_id, page_id, useProModel, refs);
       })
@@ -761,7 +775,8 @@ export async function generateSelectedImages(
   roles: ImageRole[],
   existingImages: GeneratedImageResult[],
   useProModel = false,
-  userInstructions = ""
+  userInstructions = "",
+  additionalReferenceUrls: string[] = []
 ): Promise<GeneratedImageResult[]> {
   const targetRoles = new Set<ImageRole>(roles);
   if (targetRoles.size === 0) return existingImages;
@@ -776,6 +791,10 @@ export async function generateSelectedImages(
       uniqueUrls.add(im.url);
     }
   }
+  // 사용자가 이번 재생성용으로 첨부한 참조 이미지도 로드
+  const extraUrls = (additionalReferenceUrls ?? []).filter(Boolean).slice(0, 3);
+  for (const u of extraUrls) uniqueUrls.add(u);
+
   const refCache: Record<string, ReferenceImage | null> = {};
   if (uniqueUrls.size > 0) {
     console.log(
@@ -786,6 +805,12 @@ export async function generateSelectedImages(
         refCache[url] = await fetchReferenceImage(url);
       })
     );
+  }
+
+  const extraRefs: ReferenceImage[] = [];
+  for (const u of extraUrls) {
+    const cached = refCache[u];
+    if (cached) extraRefs.push(cached);
   }
 
   // === 병렬 생성 ===
@@ -805,6 +830,8 @@ export async function generateSelectedImages(
           const cached = refCache[p.url];
           if (cached) refs.push(cached);
         }
+        // 사용자가 이번 재생성용으로 첨부한 참조 이미지도 함께 주입
+        for (const r of extraRefs) refs.push(r);
         const finalPrompt = appendUserInstructions(prompt, userInstructions);
         return generateOneImage(finalPrompt, role, user_id, page_id, useProModel, refs);
       })

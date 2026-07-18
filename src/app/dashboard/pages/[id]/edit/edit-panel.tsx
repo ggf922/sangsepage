@@ -18,6 +18,10 @@ import {
   Wand2,
   ListChecks,
   MessageSquare,
+  Upload,
+  X,
+  ImagePlus,
+  ArrowDown,
 } from "lucide-react";
 
 type EditMode = "copy_only" | "images_only" | "all" | "partial";
@@ -171,6 +175,13 @@ export default function EditPanel({ pageId, editCount, points }: Props) {
   // 사용자가 직접 입력하는 재생성 지시사항 (모든 모드에 적용)
   const [userInstructions, setUserInstructions] = useState("");
 
+  // 사용자가 이번 재생성용으로 첨부한 참조 이미지 (최대 3장, 이미지 재생성 시에만 사용됨)
+  const [referenceImages, setReferenceImages] = useState<
+    { url: string; name: string }[]
+  >([]);
+  const [uploadingRef, setUploadingRef] = useState(false);
+  const [refUploadError, setRefUploadError] = useState<string | null>(null);
+
   const mode = MODES.find((m) => m.code === selectedMode)!;
 
   // 실제 차감 포인트 (partial은 동적 계산)
@@ -206,6 +217,81 @@ export default function EditPanel({ pageId, editCount, points }: Props) {
       prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
     );
   };
+
+  // 사용자 첨부 참조 이미지 업로드
+  async function handleReferenceUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = ""; // 같은 파일 재선택 가능하게 초기화
+    if (files.length === 0) return;
+
+    const remaining = 3 - referenceImages.length;
+    if (remaining <= 0) {
+      setRefUploadError("참조 이미지는 최대 3장까지 첨부할 수 있어요.");
+      return;
+    }
+    const toUpload = files.slice(0, remaining);
+
+    setRefUploadError(null);
+    setUploadingRef(true);
+    try {
+      for (const file of toUpload) {
+        if (file.size > 10 * 1024 * 1024) {
+          setRefUploadError(`파일이 너무 큽니다 (10MB 이하): ${file.name}`);
+          continue;
+        }
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("role", "reference"); // API가 자동으로 처리
+        const res = await fetch("/api/upload/product-image", {
+          method: "POST",
+          body: fd,
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          setRefUploadError(data.error ?? "업로드에 실패했습니다.");
+          continue;
+        }
+        setReferenceImages((prev) => [
+          ...prev,
+          { url: data.image.url, name: file.name },
+        ]);
+      }
+    } catch (err: any) {
+      setRefUploadError(err?.message ?? "네트워크 오류로 업로드에 실패했습니다.");
+    } finally {
+      setUploadingRef(false);
+    }
+  }
+
+  function removeReferenceImage(idx: number) {
+    setReferenceImages((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  // "이 요청사항이 어디에 반영되는지" 사용자에게 알려주는 요약 문구
+  const affectedTargetLabel = (() => {
+    if (selectedMode === "copy_only") return "카피 전체 (텍스트만)";
+    if (selectedMode === "images_only") return "이미지 9장 전체";
+    if (selectedMode === "all") return "카피 + 이미지 전체";
+    // partial
+    const parts: string[] = [];
+    if (selectedCopySections.length > 0) {
+      parts.push(
+        `카피 ${selectedCopySections.length}개 섹션(${selectedCopySections
+          .map((c) => COPY_SECTIONS.find((s) => s.code === c)?.label)
+          .filter(Boolean)
+          .join(", ")})`
+      );
+    }
+    if (selectedImageSections.length > 0) {
+      parts.push(
+        `이미지 ${selectedImageSections.length}개 그룹(${selectedImageSections
+          .map((c) => IMAGE_SECTIONS.find((s) => s.code === c)?.label)
+          .filter(Boolean)
+          .join(", ")})`
+      );
+    }
+    return parts.length > 0 ? parts.join(" + ") : "선택된 섹션 없음";
+  })();
 
   async function handleSubmit() {
     if (selectedMode === "partial" && !partialHasSelection) {
@@ -244,6 +330,9 @@ export default function EditPanel({ pageId, editCount, points }: Props) {
             mode: selectedMode,
             use_pro_model: useProModel,
             instructions: userInstructions.trim(),
+            reference_image_urls: needsImages
+              ? referenceImages.map((r) => r.url)
+              : [],
             ...(selectedMode === "partial"
               ? {
                   copy_sections: selectedCopySections,
@@ -284,7 +373,16 @@ export default function EditPanel({ pageId, editCount, points }: Props) {
         포인트가 충분하면 횟수 제한 없이 원하는 만큼 수정할 수 있습니다. 카피/이미지 범위에 따라 포인트가 달라집니다.
       </p>
 
-      {/* 모드 선택 */}
+      {/* STEP 1: 모드 선택 */}
+      <div className="mb-2 flex items-center gap-2">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-[11px] font-bold text-white">
+          1
+        </span>
+        <p className="text-sm font-bold text-ink">수정 범위를 골라주세요</p>
+      </div>
+      <p className="mb-3 ml-8 text-[11px] text-muted-foreground">
+        어떤 부분을 다시 만들지 정하면, 필요한 포인트가 계산됩니다.
+      </p>
       <div className="mb-5 space-y-2">
         {MODES.map((m) => {
           const isSelected = selectedMode === m.code;
@@ -356,13 +454,22 @@ export default function EditPanel({ pageId, editCount, points }: Props) {
 
       {/* 부분 수정 선택 패널 */}
       {selectedMode === "partial" && (
-        <div className="mb-5 rounded-lg border border-brand/20 bg-ivory p-4">
+        <>
+          <div className="mb-2 flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-[11px] font-bold text-white">
+              1-1
+            </span>
+            <p className="text-sm font-bold text-ink">
+              재생성할 섹션을 골라주세요
+            </p>
+          </div>
+          <p className="mb-2 ml-8 text-[11px] text-muted-foreground">
+            체크한 부분만 다시 만들어요. 나머지는 그대로 유지됩니다.
+          </p>
+        <div className="mb-5 rounded-lg border-2 border-brand/25 bg-ivory p-4">
           <div className="mb-3 flex items-start justify-between gap-2">
             <div>
-              <p className="text-sm font-bold text-ink">
-                재생성할 섹션을 선택하세요
-              </p>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
+              <p className="text-[11px] text-muted-foreground">
                 카피 섹션은 몇 개를 선택해도 <strong>+3P</strong> 정가.
                 이미지 그룹은 <strong>1그룹당 +3P</strong>.
               </p>
@@ -475,17 +582,44 @@ export default function EditPanel({ pageId, editCount, points }: Props) {
             </p>
           )}
         </div>
+        </>
       )}
 
-      {/* 사용자 지시사항 - 모든 모드에서 사용 가능 */}
+      {/* STEP 2/3: 사용자 지시사항 - 모든 모드에서 사용 가능 */}
+      <div className="mb-2 flex items-center gap-2">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-[11px] font-bold text-white">
+          {selectedMode === "partial" ? "2" : "2"}
+        </span>
+        <p className="text-sm font-bold text-ink">
+          AI에게 원하는 방향을 알려주세요{" "}
+          <span className="ml-1 rounded bg-brand/10 px-1.5 py-0.5 text-[10px] font-medium text-brand">
+            선택 · 강력 추천
+          </span>
+        </p>
+      </div>
+      <p className="mb-3 ml-8 text-[11px] text-muted-foreground">
+        위에서 고른 <b className="text-ink">&ldquo;{mode.label}&rdquo;</b>에 이 요청이 자동으로 반영됩니다.
+      </p>
+
+      {/* 반영 대상 요약 뱃지 */}
+      <div className="mb-3 flex items-start gap-2 rounded-lg border border-brand/20 bg-brand/[0.04] p-3">
+        <ArrowDown className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand" />
+        <div className="text-[11px] leading-relaxed">
+          <span className="font-semibold text-brand">이 요청이 반영될 대상:</span>{" "}
+          <span className="text-ink/85">{affectedTargetLabel}</span>
+          {selectedMode === "partial" && !partialHasSelection && (
+            <span className="ml-1 text-amber-700">
+              (아직 섹션을 선택하지 않았어요)
+            </span>
+          )}
+        </div>
+      </div>
+
       <div className="mb-5 rounded-lg border border-brand/20 bg-white p-4">
         <div className="mb-2 flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-sm font-bold text-ink">
             <MessageSquare className="h-4 w-4 text-brand" />
             수정 요청사항
-            <span className="rounded bg-brand/10 px-1.5 py-0.5 text-[10px] font-medium text-brand">
-              선택 · 강력 추천
-            </span>
           </div>
           <span
             className={
@@ -523,6 +657,112 @@ export default function EditPanel({ pageId, editCount, points }: Props) {
             AI가 이 요청을 반영해서 재생성합니다.
           </p>
         )}
+
+        {/* 참조 이미지 첨부 — 이미지 재생성 모드에서만 노출 */}
+        {needsImages && (
+          <div className="mt-4 border-t border-brand/10 pt-3">
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-[13px] font-bold text-ink">
+                <ImagePlus className="h-3.5 w-3.5 text-brand" />
+                참조 이미지 첨부
+                <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700">
+                  선택 · 스타일 참고
+                </span>
+              </div>
+              <span className="text-[10px] text-muted-foreground">
+                {referenceImages.length}/3
+              </span>
+            </div>
+            <p className="mb-2 text-[11px] leading-relaxed text-muted-foreground">
+              원하는 <b className="text-ink">배경 · 조명 · 스타일 · 색감</b>이 담긴 사진을 올리면,
+              AI가 새 이미지를 만들 때 참고합니다. (jpg / png / webp, 최대 3장, 각 10MB 이하)
+            </p>
+
+            {/* 업로드된 미리보기 */}
+            {referenceImages.length > 0 && (
+              <div className="mb-2 grid grid-cols-3 gap-2">
+                {referenceImages.map((img, i) => (
+                  <div
+                    key={img.url}
+                    className="group relative aspect-square overflow-hidden rounded-lg border border-brand/20 bg-ivory"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={img.url}
+                      alt={img.name}
+                      className="h-full w-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeReferenceImage(i)}
+                      disabled={isPending}
+                      aria-label="이 참조 이미지 삭제"
+                      className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-90 hover:bg-red-600 disabled:opacity-40"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                    <div className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/70 to-transparent px-1.5 py-1 text-[9px] text-white">
+                      {img.name}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 업로드 버튼 */}
+            {referenceImages.length < 3 && (
+              <label
+                className={
+                  uploadingRef || isPending
+                    ? "flex cursor-not-allowed items-center justify-center gap-2 rounded-lg border-2 border-dashed border-brand/20 bg-ivory/40 px-3 py-3 text-xs text-muted-foreground opacity-60"
+                    : "flex cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-brand/30 bg-ivory/60 px-3 py-3 text-xs font-medium text-brand hover:border-brand/60 hover:bg-brand/5"
+                }
+              >
+                {uploadingRef ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    업로드 중...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-3.5 w-3.5" />
+                    참조 이미지 선택 ({3 - referenceImages.length}장 더 가능)
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  onChange={handleReferenceUpload}
+                  disabled={uploadingRef || isPending}
+                  className="hidden"
+                />
+              </label>
+            )}
+
+            {refUploadError && (
+              <p className="mt-1.5 flex items-center gap-1 text-[10px] text-red-600">
+                <AlertCircle className="h-3 w-3" />
+                {refUploadError}
+              </p>
+            )}
+
+            {referenceImages.length > 0 && (
+              <p className="mt-1.5 flex items-center gap-1 text-[10px] text-purple-700">
+                <CheckCircle2 className="h-3 w-3" />
+                이 이미지들의 스타일·구도·색감을 참고해 재생성합니다.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* STEP 3: 확인 & 재생성 */}
+      <div className="mb-2 flex items-center gap-2">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-[11px] font-bold text-white">
+          3
+        </span>
+        <p className="text-sm font-bold text-ink">확인 후 재생성</p>
       </div>
 
       {/* 이미지 모델 선택 (이미지 재생성 시만 표시) */}
