@@ -27,17 +27,15 @@ export default async function HomePage() {
         aria-label="88 k 마트(modoomodoo.com) 바로가기"
         className="group block w-full bg-gradient-to-r from-brand via-brand-dark to-brand text-white transition-opacity hover:opacity-95"
       >
-        <div className="container mx-auto flex items-center justify-center gap-2 px-4 py-2 text-center text-[12px] font-medium sm:text-[13px]">
+        <div className="container mx-auto flex items-center justify-center gap-1.5 px-3 py-2 text-center text-[11.5px] font-medium sm:gap-2 sm:px-4 sm:text-[13px]">
           <Sparkles className="h-3.5 w-3.5 shrink-0 opacity-90" />
           <span className="inline-flex flex-wrap items-center justify-center gap-x-1.5">
-            <span className="font-serif text-[13px] font-extrabold tracking-tight sm:text-[14px]">
+            <span className="font-serif text-[12.5px] font-extrabold tracking-tight sm:text-[14px]">
               88km
             </span>
             <span className="opacity-70">×</span>
             <span className="font-semibold tracking-tight">88 k 마트</span>
-            <span className="hidden opacity-80 sm:inline">
-              — 모두모두 K-Mart 바로가기
-            </span>
+            <span className="opacity-80">— 모두모두 K-Mart 바로가기</span>
           </span>
           <ArrowRight className="h-3.5 w-3.5 shrink-0 transition-transform group-hover:translate-x-0.5" />
         </div>
