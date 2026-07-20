@@ -63,7 +63,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "상세페이지 자동 생성 | 88km",
     description:
-      "AI로 5초만에 프로급 상품 상세페이지를 자동 생성. 지금 가입하면 50P 무료.",
+      "AI로 5초만에 프로급 상품 상세페이지를 자동 생성. 1장에 4,500원(3$).",
   },
   robots: {
     index: true,

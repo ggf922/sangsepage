@@ -104,10 +104,10 @@ export default function SignupPage() {
         <div className="rounded-2xl border border-brand/10 bg-white p-8 shadow-xl">
           <div className="mb-6 text-center">
             <h1 className="mb-2 font-serif text-3xl font-bold text-ink">
-              무료 회원가입
+              회원가입
             </h1>
             <p className="text-sm text-muted-foreground">
-              🎁 지금 가입하면 50포인트 무료 (상세페이지 1장 + 수정 여유)
+              가입 후 포인트를 충전하고 바로 시작하세요
             </p>
           </div>
 
@@ -175,7 +175,7 @@ export default function SignupPage() {
               disabled={loading}
               className="w-full rounded-lg bg-brand py-2.5 font-medium text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "가입 중..." : "무료로 시작하기"}
+              {loading ? "가입 중..." : "회원가입 하기"}
             </button>
 
             <p className="text-center text-xs text-muted-foreground">

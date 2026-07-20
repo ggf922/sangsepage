@@ -107,7 +107,7 @@ export default async function TwitterImage() {
             fontWeight: 500,
           }}
         >
-          5가지 스타일 × 4개국어 · 가입 시 50P 무료
+          5가지 스타일 × 4개국어 · 1장 4,500원(3$)
         </div>
       </div>
     ),

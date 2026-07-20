@@ -178,12 +178,12 @@ export default async function HomePage() {
             <div className="mx-auto flex w-fit max-w-full flex-col items-start gap-2.5 text-[13px] text-ink/60 sm:w-auto sm:flex-row sm:items-center sm:justify-center sm:gap-6">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-brand/70" />
-                <span>가입 즉시 <b className="font-semibold text-ink/80">50P</b> 무료 지급</span>
+                <span>페이지 1장 <b className="font-semibold text-ink/80">4,500원(3$)</b></span>
               </div>
               <div className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block" />
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-brand/70" />
-                <span>카드 등록 없이 시작</span>
+                <span>결제한 만큼만 사용</span>
               </div>
               <div className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block" />
               <div className="flex items-center gap-2">
@@ -366,17 +366,17 @@ export default async function HomePage() {
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 backdrop-blur">
                 <Star className="h-3.5 w-3.5 fill-yellow-300 text-yellow-300" />
                 <span className="text-[11px] font-semibold uppercase tracking-[0.18em]">
-                  런칭 기념 혜택
+                  합리적인 가격
                 </span>
               </div>
               <h2 className="mb-5 font-serif text-[36px] font-bold leading-[1.2] tracking-[-0.02em] md:text-[52px]">
-                지금 가입하면
+                상세페이지 1장
                 <br />
-                <span className="text-yellow-300">50P 무료</span> 지급
+                단 <span className="text-yellow-300">4,500원(3$)</span>
               </h2>
               <p className="mx-auto mb-10 max-w-lg text-[16px] leading-[1.7] text-white/80 md:text-[17px]">
-                상세페이지 <strong className="font-semibold text-white">1장 무료 제작</strong>{" "}
-                · 카드 등록 불필요
+                외주 대비 <strong className="font-semibold text-white">40배 이상 저렴</strong>{" "}
+                · 결제한 만큼만 사용
                 <br />
                 지금 바로 시작하세요.
               </p>
@@ -384,7 +384,7 @@ export default async function HomePage() {
                 href="/auth/signup"
                 className="group inline-flex items-center gap-2 rounded-full bg-white px-10 py-4 text-[15px] font-semibold tracking-tight text-brand shadow-xl shadow-black/20 transition-all hover:-translate-y-0.5 hover:bg-yellow-50 hover:shadow-2xl"
               >
-                무료 회원가입
+                회원가입 하기
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
             </div>
