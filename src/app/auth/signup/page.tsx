@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { translateAuthError } from "@/lib/supabase/error-messages";
 import { getAbsoluteUrl } from "@/lib/site-url";
 import { Sparkles, CheckCircle } from "lucide-react";
+import { TurnstileWidget } from "@/components/turnstile-widget";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -24,6 +26,36 @@ export default function SignupPage() {
 
     if (password.length < 8) {
       setError("비밀번호는 최소 8자 이상이어야 합니다.");
+      setLoading(false);
+      return;
+    }
+
+    // 봇 방지 - Turnstile 토큰 확인
+    if (!turnstileToken) {
+      setError("보안 확인을 완료해 주세요.");
+      setLoading(false);
+      return;
+    }
+
+    // 서버 검증
+    try {
+      const verifyRes = await fetch("/api/auth/verify-turnstile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: turnstileToken }),
+      });
+      const verifyData = await verifyRes.json();
+      if (!verifyData.success) {
+        setError(
+          "보안 확인에 실패했습니다. 페이지를 새로고침 후 다시 시도해 주세요.",
+        );
+        setLoading(false);
+        return;
+      }
+    } catch {
+      setError(
+        "보안 확인 요청에 실패했습니다. 네트워크 상태를 확인해 주세요.",
+      );
       setLoading(false);
       return;
     }
@@ -164,6 +196,16 @@ export default function SignupPage() {
               />
             </div>
 
+            {/* Cloudflare Turnstile - 봇 차단 */}
+            <div className="flex justify-center pt-1">
+              <TurnstileWidget
+                onVerify={(token) => setTurnstileToken(token)}
+                onExpire={() => setTurnstileToken(null)}
+                onError={() => setTurnstileToken(null)}
+                action="signup"
+              />
+            </div>
+
             {error && (
               <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
                 {error}
@@ -172,7 +214,7 @@ export default function SignupPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !turnstileToken}
               className="w-full rounded-lg bg-brand py-2.5 font-medium text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? "가입 중..." : "회원가입 하기"}

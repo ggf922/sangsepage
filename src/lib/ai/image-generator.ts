@@ -10,6 +10,11 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import type { Product, Template, ProductImage } from "@/lib/types";
 import { generateShortId } from "@/lib/utils";
+import {
+  pickAvailableKey,
+  markKeyFailure,
+  markKeySuccess,
+} from "@/lib/ai/gemini-keys";
 
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
@@ -172,11 +177,11 @@ async function callGeminiOnce(
 
     let hint = "";
     if (status === 401 || status === 403) {
-      hint = " (API 키 문제 — Vercel 환경변수 GEMINI_API_KEY 확인 필요)";
+      hint = " (API 키 문제 — 다음 키로 자동 전환됩니다)";
     } else if (status === 404) {
       hint = ` (모델 '${model}' 을 찾을 수 없음 — 모델명 확인 필요)`;
     } else if (status === 429) {
-      hint = " (요청 한도 초과 — 잠시 후 다시 시도하세요)";
+      hint = " (할당량 초과 — 다음 키로 자동 전환됩니다)";
     } else if (status === 400) {
       hint = " (프롬프트 형식 오류 또는 지원하지 않는 요청)";
     } else if (status === 503) {
@@ -189,6 +194,8 @@ async function callGeminiOnce(
     err.status = status;
     // 재시도 가능 여부 표시 (503, 429, 500, 502, 504)
     err.retryable = status === 503 || status === 429 || status === 500 || status === 502 || status === 504;
+    // 키 교체가 필요한 에러 (429/401/403)
+    err.needsKeyRotation = status === 429 || status === 401 || status === 403;
     throw err;
   }
 
@@ -222,17 +229,6 @@ async function generateOneImage(
   useProModel = false,
   referenceImages: ReferenceImage[] = []
 ): Promise<GeneratedImageResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY가 설정되지 않았습니다.");
-
-  const isAuthKey = apiKey.startsWith("AQ.");
-  const isStandardKey = apiKey.startsWith("AIza");
-  if (!isAuthKey && !isStandardKey) {
-    console.warn(
-      `[Gemini] Unrecognized API key prefix. Expected 'AQ.' (auth) or 'AIza' (standard).`
-    );
-  }
-
   // 시도할 모델 목록: Pro 사용자면 Pro 먼저, 실패 시 Free로 fallback
   const modelChain: string[] = useProModel ? [MODEL_PRO, MODEL_FREE] : [MODEL_FREE];
 
@@ -245,33 +241,56 @@ async function generateOneImage(
 
   outer: for (const model of modelChain) {
     for (let attempt = 0; attempt < MAX_ATTEMPTS_PER_MODEL; attempt++) {
+      // 매 시도마다 사용 가능한 키를 선택 (실패한 키는 자동 격리됨)
+      const { key: apiKey, index: keyIdx, total: totalKeys } = pickAvailableKey();
+
+      const isAuthKey = apiKey.startsWith("AQ.");
+      const isStandardKey = apiKey.startsWith("AIza");
+      if (!isAuthKey && !isStandardKey && attempt === 0) {
+        console.warn(
+          `[Gemini] 키 #${keyIdx} - Unrecognized API key prefix. Expected 'AQ.' or 'AIza'.`
+        );
+      }
+
       try {
         console.log(
-          `[Gemini] ${role} 시도 ${attempt + 1}/${MAX_ATTEMPTS_PER_MODEL} — model=${model}`
+          `[Gemini] ${role} 시도 ${attempt + 1}/${MAX_ATTEMPTS_PER_MODEL} — model=${model}, key #${keyIdx}/${totalKeys}`
         );
         result = await callGeminiOnce(prompt, model, apiKey, referenceImages);
+        markKeySuccess(apiKey);
         usedModel = model;
         break outer; // 성공 시 전체 루프 탈출
       } catch (err: any) {
         lastError = err;
         const status = err?.status;
         const retryable = err?.retryable;
+        const needsKeyRotation = err?.needsKeyRotation;
 
         console.warn(
-          `[Gemini] ${role} 실패 (attempt ${attempt + 1}, model=${model}, status=${status}): ${err?.message?.slice(0, 150)}`
+          `[Gemini] ${role} 실패 (attempt ${attempt + 1}, model=${model}, key #${keyIdx}, status=${status}): ${err?.message?.slice(0, 150)}`
         );
 
-        // 재시도 불가능한 에러(400/401/403/404)는 즉시 다음 모델로 (또는 최종 실패)
+        // 429/401/403인 경우 해당 키를 격리하고 다음 시도에서 다른 키 사용
+        if (needsKeyRotation) {
+          markKeyFailure(apiKey, status);
+        }
+
+        // 재시도 불가능한 에러(400/404)는 즉시 다음 모델로 (또는 최종 실패)
         if (!retryable) {
           console.log(`[Gemini] ${role} 재시도 불가능 에러 — 모델 전환 시도`);
           break; // 이 모델의 재시도 루프 종료 → 다음 모델 시도
         }
 
-        // 마지막 시도가 아니면 백오프 대기
+        // 429의 경우 키 교체가 이미 됐으므로 백오프 없이 즉시 다음 키 시도
+        // 그 외 5xx는 백오프 대기 후 재시도
         if (attempt < MAX_ATTEMPTS_PER_MODEL - 1) {
-          const delay = RETRY_DELAYS[attempt] ?? 8000;
-          console.log(`[Gemini] ${role} ${delay}ms 대기 후 재시도...`);
-          await new Promise((r) => setTimeout(r, delay));
+          const delay = needsKeyRotation ? 0 : (RETRY_DELAYS[attempt] ?? 8000);
+          if (delay > 0) {
+            console.log(`[Gemini] ${role} ${delay}ms 대기 후 재시도...`);
+            await new Promise((r) => setTimeout(r, delay));
+          } else {
+            console.log(`[Gemini] ${role} 키 교체 후 즉시 재시도...`);
+          }
         }
       }
     }
