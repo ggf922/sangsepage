@@ -13,9 +13,18 @@ import {
 } from "lucide-react";
 import { getI18n } from "@/lib/i18n/server";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function HomePage() {
   const { locale, t } = await getI18n();
+
+  // 로그인 상태 확인 - CTA 목적지를 다르게 설정
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const isLoggedIn = !!user;
+  const ctaHref = isLoggedIn ? "/dashboard/generate" : "/auth/signup";
 
   return (
     <main className="min-h-screen bg-ivory-light text-ink [word-break:keep-all]">
@@ -158,10 +167,10 @@ export default async function HomePage() {
             {/* CTA */}
             <div className="mb-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
-                href="/auth/signup"
+                href={ctaHref}
                 className="group inline-flex items-center justify-center gap-2 rounded-full bg-brand px-8 py-4 text-[15px] font-semibold tracking-tight text-white shadow-lg shadow-brand/25 transition-all hover:-translate-y-0.5 hover:bg-brand-dark hover:shadow-xl hover:shadow-brand/35"
               >
-                무료로 1장 만들기
+                상세페이지 생성하기
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
               <Link
@@ -381,10 +390,10 @@ export default async function HomePage() {
                 지금 바로 시작하세요.
               </p>
               <Link
-                href="/auth/signup"
+                href={ctaHref}
                 className="group inline-flex items-center gap-2 rounded-full bg-white px-10 py-4 text-[15px] font-semibold tracking-tight text-brand shadow-xl shadow-black/20 transition-all hover:-translate-y-0.5 hover:bg-yellow-50 hover:shadow-2xl"
               >
-                회원가입 하기
+                {isLoggedIn ? "상세페이지 생성하기" : "회원가입 하기"}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
             </div>

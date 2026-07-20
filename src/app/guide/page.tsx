@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { createClient } from "@/lib/supabase/server";
 import {
   ArrowRight,
   UserPlus,
@@ -31,7 +32,15 @@ export const metadata: Metadata = {
     "88km 사용법과 상세페이지 퀄러티를 높이는 방법을 자세히 안내합니다.",
 };
 
-export default function GuidePage() {
+export default async function GuidePage() {
+  // 로그인 여부에 따라 CTA 목적지 결정
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const isLoggedIn = !!user;
+  const ctaHref = isLoggedIn ? "/dashboard/generate" : "/auth/signup";
+
   return (
     <main className="min-h-screen bg-ivory-light text-ink [word-break:keep-all]">
       {/* Header */}
@@ -650,14 +659,14 @@ export default function GuidePage() {
       <section className="border-t border-black/[0.06] bg-white/50">
         <div className="container mx-auto px-6 py-16 text-center">
           <h2 className="mb-3 font-serif text-[32px] font-bold tracking-tight md:text-[40px]">
-            지금 바로 <span className="text-brand">무료로 1장</span> 만들어 보기
+            지금 바로 <span className="text-brand">상세페이지 1장</span> 만들어 보기
           </h2>
           <p className="mb-8 text-[15px] text-ink/70">회원가입 후 포인트 충전해서 바로 시작하세요</p>
           <Link
-            href="/auth/signup"
+            href={ctaHref}
             className="inline-flex items-center gap-2 rounded-full bg-brand px-8 py-3.5 text-[15px] font-medium text-white shadow-sm shadow-brand/20 transition hover:bg-brand-dark hover:shadow-md hover:shadow-brand/30"
           >
-            무료로 시작하기
+            상세페이지 생성하기
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
